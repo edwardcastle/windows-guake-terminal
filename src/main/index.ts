@@ -1,9 +1,12 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, globalShortcut, ipcMain, Menu, nativeImage, Tray } from 'electron'
 import path from 'node:path'
 import * as nodePty from 'node-pty'
 import { ConfigStore } from './config-store'
 import { detectProfiles } from './profiles'
 import { PtyManager, SpawnFn } from './pty-manager'
+import { WindowManager } from './window-manager'
+
+if (!app.requestSingleInstanceLock()) app.quit()
 
 const realSpawn: SpawnFn = (exe, args, opts) =>
   nodePty.spawn(exe, args, {
@@ -17,7 +20,30 @@ const realSpawn: SpawnFn = (exe, args, opts) =>
 
 const store = new ConfigStore(path.join(app.getPath('appData'), 'quake-term'))
 const ptys = new PtyManager(realSpawn)
-let win: BrowserWindow
+let wm: WindowManager
+let tray: Tray
+let quitting = false
+let registeredHotkey = ''
+
+function applyMainConfig(): void {
+  const cfg = store.config
+  if (registeredHotkey !== cfg.hotkey) {
+    if (registeredHotkey) globalShortcut.unregister(registeredHotkey)
+    registeredHotkey = ''
+    if (globalShortcut.register(cfg.hotkey, () => wm.toggle())) {
+      registeredHotkey = cfg.hotkey
+    } else {
+      tray?.displayBalloon({
+        title: 'quake-term',
+        content: `Could not register hotkey "${cfg.hotkey}" (in use by another app). Change it in settings; the tray icon still toggles the window.`
+      })
+    }
+  }
+  wm.applyAppearance()
+  if (app.isPackaged) {
+    app.setLoginItemSettings({ openAtLogin: cfg.startWithWindows, args: ['--hidden'] })
+  }
+}
 
 function registerIpc(): void {
   ipcMain.handle('pty:spawn', (_e, paneId: string, profileId: string, cols: number, rows: number) => {
@@ -26,8 +52,8 @@ function registerIpc(): void {
     try {
       ptys.spawn(
         paneId, profile, cols, rows,
-        (d) => win.webContents.send('pty:data', paneId, d),
-        (c) => win.webContents.send('pty:exit', paneId, c)
+        (d) => wm.win.webContents.send('pty:data', paneId, d),
+        (c) => wm.win.webContents.send('pty:exit', paneId, c)
       )
       return null
     } catch (err) {
@@ -41,10 +67,11 @@ function registerIpc(): void {
   ipcMain.handle('profiles:get', () => store.config.profiles)
   ipcMain.handle('config:set', (_e, patch) => {
     const c = store.set(patch as object)
-    win.webContents.send('config:changed', c)
+    applyMainConfig()
+    wm.win.webContents.send('config:changed', c)
     return c
   })
-  ipcMain.on('window:hide', () => win.hide())
+  ipcMain.on('window:hide', () => wm.hide())
 }
 
 app.whenReady().then(() => {
@@ -53,22 +80,61 @@ app.whenReady().then(() => {
     const detected = detectProfiles()
     store.set({ profiles: detected, defaultProfileId: detected[0]?.id ?? '' })
   }
+
+  wm = new WindowManager(() => store.config)
   registerIpc()
-  win = new BrowserWindow({
-    width: 1200,
-    height: 700,
-    backgroundColor: '#282a36',
-    webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
-      sandbox: false
+  if (process.env['ELECTRON_RENDERER_URL']) {
+    wm.win.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  } else {
+    wm.win.loadFile(path.join(__dirname, '../renderer/index.html'))
+  }
+  wm.win.on('close', (e) => {
+    if (!quitting) {
+      e.preventDefault()
+      wm.hide()
     }
   })
-  if (process.env['ELECTRON_RENDERER_URL']) {
-    win.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    win.loadFile(path.join(__dirname, '../renderer/index.html'))
+
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'assets/icon.png')
+    : path.join(app.getAppPath(), 'assets/icon.png')
+  tray = new Tray(nativeImage.createFromPath(iconPath))
+  tray.setToolTip('quake-term')
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Toggle terminal', click: () => wm.toggle() },
+    {
+      label: 'Settings',
+      click: () => {
+        wm.show()
+        wm.win.webContents.send('ui:open-settings')
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        quitting = true
+        app.quit()
+      }
+    }
+  ]))
+  tray.on('click', () => wm.toggle())
+
+  applyMainConfig()
+  if (store.corrupt) {
+    tray.displayBalloon({
+      title: 'quake-term',
+      content: 'config.json was corrupt — backed up to config.json.bak and reset to defaults.'
+    })
   }
+  if (!process.argv.includes('--hidden')) wm.show()
 })
 
-app.on('will-quit', () => ptys.killAll())
-app.on('window-all-closed', () => app.quit())
+app.on('second-instance', () => wm?.toggle())
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
+  ptys.killAll()
+})
+app.on('window-all-closed', () => {
+  // keep running in the tray
+})
