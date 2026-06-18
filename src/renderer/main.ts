@@ -6,6 +6,7 @@ import { matchAction } from '../shared/keys'
 import { renderPanes } from './pane-view'
 import { TermPane } from './term-pane'
 import { renderTabBar } from './tab-bar'
+import { FindBar } from './find-bar'
 
 interface Tab {
   id: string
@@ -25,6 +26,7 @@ const uid = (prefix: string): string => `${prefix}${nextId++}`
 
 const tabbarEl = document.querySelector('#tabbar') as HTMLElement
 const panesEl = document.querySelector('#panes') as HTMLElement
+const findBar = new FindBar(document.body)
 
 function activeTab(): Tab | undefined { return tabs[activeTabIdx] }
 function activePane(): TermPane | undefined {
@@ -192,7 +194,11 @@ async function runAction(action: string): Promise<void> {
     case 'fontBigger': changeFontSize(1); break
     case 'fontSmaller': changeFontSize(-1); break
     case 'fontReset': changeFontSize(null); break
-    // 'find' and 'settings' are wired in Tasks 12 and 13
+    case 'find': {
+      if (pane) findBar.open(pane)
+      break
+    }
+    // 'settings' is wired in Task 13
   }
 }
 
