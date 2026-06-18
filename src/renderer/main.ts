@@ -7,6 +7,8 @@ import { renderPanes } from './pane-view'
 import { TermPane } from './term-pane'
 import { renderTabBar } from './tab-bar'
 import { FindBar } from './find-bar'
+import { SettingsUI } from './settings-ui'
+import { themeOf } from './themes'
 
 interface Tab {
   id: string
@@ -27,6 +29,17 @@ const uid = (prefix: string): string => `${prefix}${nextId++}`
 const tabbarEl = document.querySelector('#tabbar') as HTMLElement
 const panesEl = document.querySelector('#panes') as HTMLElement
 const findBar = new FindBar(document.body)
+const settings = new SettingsUI(
+  document.body,
+  () => config,
+  () => profiles,
+  (patch) => void window.api.setConfig(patch)
+)
+
+function applyUiTheme(cfg: Config): void {
+  const bg = String(themeOf(cfg.theme).background)
+  document.documentElement.style.setProperty('--term-bg', bg)
+}
 
 function activeTab(): Tab | undefined { return tabs[activeTabIdx] }
 function activePane(): TermPane | undefined {
@@ -120,6 +133,15 @@ async function boot(): Promise<void> {
   profiles = (await window.api.getProfiles()) as Profile[]
   window.api.onData((id, d) => panes.get(id)?.term.write(d))
   window.api.onExit((id, c) => panes.get(id)?.handleExit(c))
+  applyUiTheme(config)
+  window.api.onConfigChanged((c) => {
+    config = c as Config
+    panes.forEach((p) => p.applyConfig(config))
+    applyUiTheme(config)
+    settings.rebuild()
+    render()
+  })
+  window.api.onOpenSettings(() => settings.open())
   new ResizeObserver(() => render()).observe(panesEl)
   newTab()
 }
@@ -198,7 +220,7 @@ async function runAction(action: string): Promise<void> {
       if (pane) findBar.open(pane)
       break
     }
-    // 'settings' is wired in Task 13
+    case 'settings': settings.toggle(); break
   }
 }
 
