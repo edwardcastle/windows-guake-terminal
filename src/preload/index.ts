@@ -1,3 +1,25 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 
-contextBridge.exposeInMainWorld('api', { ping: () => 'pong' })
+const api = {
+  spawn: (paneId: string, profileId: string, cols: number, rows: number) =>
+    ipcRenderer.invoke('pty:spawn', paneId, profileId, cols, rows) as Promise<string | null>,
+  write: (paneId: string, data: string) => ipcRenderer.send('pty:write', paneId, data),
+  resize: (paneId: string, cols: number, rows: number) =>
+    ipcRenderer.send('pty:resize', paneId, cols, rows),
+  kill: (paneId: string) => ipcRenderer.send('pty:kill', paneId),
+  onData: (cb: (paneId: string, data: string) => void) =>
+    ipcRenderer.on('pty:data', (_e, id: string, d: string) => cb(id, d)),
+  onExit: (cb: (paneId: string, code: number) => void) =>
+    ipcRenderer.on('pty:exit', (_e, id: string, c: number) => cb(id, c)),
+  getConfig: () => ipcRenderer.invoke('config:get'),
+  setConfig: (patch: unknown) => ipcRenderer.invoke('config:set', patch),
+  onConfigChanged: (cb: (config: unknown) => void) =>
+    ipcRenderer.on('config:changed', (_e, c) => cb(c)),
+  getProfiles: () => ipcRenderer.invoke('profiles:get'),
+  onOpenSettings: (cb: () => void) => ipcRenderer.on('ui:open-settings', () => cb()),
+  hideWindow: () => ipcRenderer.send('window:hide')
+}
+
+contextBridge.exposeInMainWorld('api', api)
+
+export type Api = typeof api
