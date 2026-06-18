@@ -1,7 +1,9 @@
 import '@xterm/xterm/css/xterm.css'
 import './styles.css'
 import type { Config, Profile } from '../shared/config'
-import { PaneNode, leaf, leaves } from '../shared/pane-tree'
+import { PaneNode, leaf, leaves, splitPane, closePane, setRatio, neighbor } from '../shared/pane-tree'
+import { matchAction } from '../shared/keys'
+import { renderPanes } from './pane-view'
 import { TermPane } from './term-pane'
 import { renderTabBar } from './tab-bar'
 
@@ -54,7 +56,6 @@ export function newTab(profileId?: string): void {
   const container = document.createElement('div')
   container.className = 'tab-container'
   container.appendChild(pane.el)
-  pane.el.style.inset = '0'
   panesEl.appendChild(container)
   tabs.push({ id: uid('t'), title: profileName(pid), root: leaf(pane.id), activePane: pane.id, container })
   activeTabIdx = tabs.length - 1
@@ -96,10 +97,19 @@ export function render(): void {
   tabs.forEach((tab, i) => {
     tab.container.classList.toggle('hidden', i !== activeTabIdx)
   })
-  const pane = activePane()
-  if (pane) {
-    pane.fitNow()
-    pane.term.focus()
+  const tab = activeTab()
+  if (tab) {
+    renderPanes(tab.container, tab.root, panes, tab.activePane,
+      (splitId, ratio) => {
+        tab.root = setRatio(tab.root, splitId, ratio)
+        render()
+      },
+      (paneId) => {
+        tab.activePane = paneId
+        render()
+      }
+    )
+    panes.get(tab.activePane)?.term.focus()
   }
 }
 
@@ -108,7 +118,94 @@ async function boot(): Promise<void> {
   profiles = (await window.api.getProfiles()) as Profile[]
   window.api.onData((id, d) => panes.get(id)?.term.write(d))
   window.api.onExit((id, c) => panes.get(id)?.handleExit(c))
+  new ResizeObserver(() => render()).observe(panesEl)
   newTab()
 }
 
 void boot()
+
+function splitActive(dir: 'row' | 'col'): void {
+  const tab = activeTab()
+  if (!tab) return
+  const current = panes.get(tab.activePane)
+  const pane = createPane(current?.profileId || config.defaultProfileId || profiles[0].id)
+  tab.root = splitPane(tab.root, tab.activePane, dir, pane.id, uid('s'))
+  tab.activePane = pane.id
+  render()
+}
+
+function closeActivePane(): void {
+  const tab = activeTab()
+  if (!tab) return
+  const closingId = tab.activePane
+  panes.get(closingId)?.dispose()
+  panes.delete(closingId)
+  const root = closePane(tab.root, closingId)
+  if (root === null) {
+    closeTab(activeTabIdx)
+    return
+  }
+  tab.root = root
+  tab.activePane = leaves(root)[0]
+  render()
+}
+
+function focusDirection(dir: 'left' | 'right' | 'up' | 'down'): void {
+  const tab = activeTab()
+  if (!tab) return
+  const target = neighbor(tab.root, tab.activePane, dir)
+  if (target) {
+    tab.activePane = target
+    render()
+  }
+}
+
+function changeFontSize(delta: number | null): void {
+  const next = delta === null ? config.fontSize : (activePane()?.term.options.fontSize ?? config.fontSize) + delta
+  const clamped = Math.min(40, Math.max(6, next))
+  panes.forEach((p) => p.setFontSize(clamped))
+}
+
+async function runAction(action: string): Promise<void> {
+  const pane = activePane()
+  switch (action) {
+    case 'newTab': newTab(); break
+    case 'closePane': closeActivePane(); break
+    case 'nextTab': nextTab(1); break
+    case 'prevTab': nextTab(-1); break
+    case 'splitRight': splitActive('row'); break
+    case 'splitDown': splitActive('col'); break
+    case 'focusLeft': focusDirection('left'); break
+    case 'focusRight': focusDirection('right'); break
+    case 'focusUp': focusDirection('up'); break
+    case 'focusDown': focusDirection('down'); break
+    case 'copy': {
+      const sel = pane?.term.getSelection()
+      if (sel) await navigator.clipboard.writeText(sel)
+      break
+    }
+    case 'paste': {
+      const text = await navigator.clipboard.readText()
+      if (text && pane && !pane.exited) window.api.write(pane.id, text)
+      break
+    }
+    case 'fontBigger': changeFontSize(1); break
+    case 'fontSmaller': changeFontSize(-1); break
+    case 'fontReset': changeFontSize(null); break
+    // 'find' and 'settings' are wired in Tasks 12 and 13
+  }
+}
+
+window.addEventListener(
+  'keydown',
+  (e) => {
+    if (!config) return
+    const action = matchAction(config.keybindings, e)
+    if (action) {
+      e.preventDefault()
+      e.stopPropagation()
+      void runAction(action)
+    }
+  },
+  { capture: true }
+)
