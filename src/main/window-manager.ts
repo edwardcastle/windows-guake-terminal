@@ -44,6 +44,10 @@ export class WindowManager {
 
   show(): void {
     if (this.animating) return
+    if (this.win.isVisible()) {
+      this.win.focus()
+      return
+    }
     const b = this.targetBounds()
     const ms = this.getConfig().animationMs
     if (ms === 0) {
