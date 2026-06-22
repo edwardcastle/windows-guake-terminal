@@ -35,4 +35,8 @@ export class FindBar {
     this.pane?.term.focus()
     this.pane = null
   }
+
+  isOpen(): boolean {
+    return !this.el.classList.contains('hidden')
+  }
 }

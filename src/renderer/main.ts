@@ -124,7 +124,7 @@ export function render(): void {
         render()
       }
     )
-    panes.get(tab.activePane)?.term.focus()
+    if (!findBar.isOpen()) panes.get(tab.activePane)?.term.focus()
   }
 }
 
