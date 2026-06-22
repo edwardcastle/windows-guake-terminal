@@ -39,7 +39,7 @@ export class PtyManager {
     })
     pty.onData(onData)
     pty.onExit(({ exitCode }) => {
-      this.ptys.delete(id)
+      if (this.ptys.get(id) === pty) this.ptys.delete(id)
       onExit(exitCode)
     })
     this.ptys.set(id, pty)

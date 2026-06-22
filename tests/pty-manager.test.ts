@@ -60,6 +60,15 @@ describe('PtyManager', () => {
     expect(spawned).toHaveLength(2)
   })
 
+  test('a late exit from a replaced pty does not unregister the new one', () => {
+    const { mgr, spawned } = setup()
+    mgr.spawn('a', profile, 80, 24, () => {}, () => {})
+    mgr.spawn('a', profile, 80, 24, () => {}, () => {})
+    spawned[0].emitExit(0) // old pty's delayed exit fires after replacement
+    mgr.write('a', 'hi')
+    expect(spawned[1].written).toEqual(['hi'])
+  })
+
   test('exit removes the pty; killAll kills everything', () => {
     const { mgr, spawned } = setup()
     mgr.spawn('a', profile, 80, 24, () => {}, () => {})
