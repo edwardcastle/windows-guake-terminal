@@ -37,6 +37,8 @@ describe('setRatio', () => {
     expect(r1.type === 'split' && r1.ratio).toBe(0.7)
     const r2 = setRatio(root, 's1', 0.01)
     expect(r2.type === 'split' && r2.ratio).toBe(0.1)
+    const r3 = setRatio(root, 's1', 0.99)
+    expect(r3.type === 'split' && r3.ratio).toBe(0.9)
   })
 })
 
@@ -46,6 +48,13 @@ describe('layout', () => {
     const rects = layout(root)
     expect(rects.get('p1')).toEqual({ x: 0, y: 0, w: 0.25, h: 1 })
     expect(rects.get('p2')).toEqual({ x: 0.25, y: 0, w: 0.75, h: 1 })
+  })
+
+  test('col split divides height by ratio', () => {
+    const root = setRatio(splitPane(leaf('p1'), 'p1', 'col', 'p2', 's1'), 's1', 0.25)
+    const rects = layout(root)
+    expect(rects.get('p1')).toEqual({ x: 0, y: 0, w: 1, h: 0.25 })
+    expect(rects.get('p2')).toEqual({ x: 0, y: 0.25, w: 1, h: 0.75 })
   })
 })
 
@@ -62,7 +71,14 @@ describe('neighbor', () => {
     let root = splitPane(leaf('p1'), 'p1', 'row', 'p2', 's1')
     root = splitPane(root, 'p2', 'col', 'p3', 's2')
     expect(neighbor(root, 'p3', 'left')).toBe('p1')
-    expect(neighbor(root, 'p1', 'right')).toBeTruthy()
+    expect(neighbor(root, 'p1', 'right')).toBe('p2')
+  })
+
+  test('finds the pane across a col split (up and down)', () => {
+    const root = splitPane(leaf('p1'), 'p1', 'col', 'p2', 's1')
+    expect(neighbor(root, 'p1', 'down')).toBe('p2')
+    expect(neighbor(root, 'p2', 'up')).toBe('p1')
+    expect(neighbor(root, 'p1', 'up')).toBeNull()
   })
 })
 
