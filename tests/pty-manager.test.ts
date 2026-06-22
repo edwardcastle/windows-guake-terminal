@@ -22,12 +22,14 @@ const profile = { id: 'cmd', name: 'cmd', exe: 'cmd.exe', args: [] }
 
 function setup() {
   const spawned: FakePty[] = []
-  const spawnFn: SpawnFn = () => {
+  const calls: { exe: string; args: string[]; opts: { cwd: string } }[] = []
+  const spawnFn: SpawnFn = (exe, args, opts) => {
+    calls.push({ exe, args, opts })
     const p = new FakePty()
     spawned.push(p)
     return p
   }
-  return { mgr: new PtyManager(spawnFn), spawned }
+  return { mgr: new PtyManager(spawnFn), spawned, calls }
 }
 
 describe('PtyManager', () => {
@@ -67,6 +69,21 @@ describe('PtyManager', () => {
     spawned[0].emitExit(0) // old pty's delayed exit fires after replacement
     mgr.write('a', 'hi')
     expect(spawned[1].written).toEqual(['hi'])
+  })
+
+  test('an explicit profile.cwd is passed through to spawn', () => {
+    const { mgr, calls } = setup()
+    mgr.spawn('a', { ...profile, cwd: '/tmp' }, 80, 24, () => {}, () => {})
+    expect(calls[0].opts.cwd).toBe('/tmp')
+  })
+
+  test('cwd falls back to a valid path, never the Windows root on POSIX', () => {
+    const { mgr, calls } = setup()
+    mgr.spawn('a', profile, 80, 24, () => {}, () => {})
+    const cwd = calls[0].opts.cwd
+    expect(typeof cwd).toBe('string')
+    expect(cwd.length).toBeGreaterThan(0)
+    if (process.platform !== 'win32') expect(cwd).not.toBe('C:\\')
   })
 
   test('exit removes the pty; killAll kills everything', () => {

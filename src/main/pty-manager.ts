@@ -34,7 +34,7 @@ export class PtyManager {
     const pty = this.spawnFn(profile.exe, profile.args, {
       cols,
       rows,
-      cwd: profile.cwd || process.env.USERPROFILE || 'C:\\',
+      cwd: profile.cwd || process.env.USERPROFILE || process.env.HOME || (process.platform === 'win32' ? 'C:\\' : '/'),
       env: process.env
     })
     pty.onData(onData)
