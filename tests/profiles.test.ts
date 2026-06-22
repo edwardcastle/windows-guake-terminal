@@ -13,9 +13,13 @@ describe('listWslDistros', () => {
 })
 
 describe('detectProfiles', () => {
-  test('always includes Windows PowerShell and cmd', () => {
+  test('detects Windows shells on win32 and a POSIX shell elsewhere', () => {
     const ids = detectProfiles().map((p) => p.id)
-    expect(ids).toContain('powershell')
-    expect(ids).toContain('cmd')
+    if (process.platform === 'win32') {
+      expect(ids).toContain('powershell')
+      expect(ids).toContain('cmd')
+    } else {
+      expect(ids).toContain('shell')
+    }
   })
 })
