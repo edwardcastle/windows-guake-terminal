@@ -11,14 +11,14 @@
     "postinstall": "electron-rebuild -f -w node-pty"
   },
   "devDependencies": {
-    "@electron/rebuild": "^3.6.0",
+    "@electron/rebuild": "^4.0.4",
     "@types/node": "^20.14.0",
-    "electron": "^31.0.0",
+    "electron": "^42.4.1",
     "electron-builder": "^26.15.3",
-    "electron-vite": "^2.3.0",
+    "electron-vite": "^5.0.0",
     "typescript": "^5.4.0",
-    "vite": "^5.2.0",
-    "vitest": "^1.6.0"
+    "vite": "^8.0.16",
+    "vitest": "^4.1.9"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
@@ -31,9 +31,23 @@
   "build": {
     "appId": "local.quake-term",
     "productName": "quake-term",
-    "files": ["out/**"],
-    "extraResources": [{ "from": "assets", "to": "assets" }],
-    "win": { "target": ["nsis"] },
-    "nsis": { "oneClick": true, "runAfterFinish": true }
+    "files": [
+      "out/**"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "runAfterFinish": true
+    }
   }
 }
