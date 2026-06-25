@@ -69,7 +69,7 @@ export const DEFAULT_CONFIG: Config = {
     fontBigger: 'Ctrl+=',
     fontSmaller: 'Ctrl+-',
     fontReset: 'Ctrl+0',
-    settings: 'Ctrl+,'
+    settings: 'Ctrl+Shift+A'
   },
   theme: 'dracula',
   customThemes: {},
