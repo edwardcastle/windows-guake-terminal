@@ -119,7 +119,7 @@ export function render(): void {
     tabs.map((t) => ({ id: t.id, title: t.title, color: colorForTab(t) })),
     activeTabIdx,
     profiles,
-    { select: selectTab, close: closeTab, newTab }
+    { select: selectTab, close: closeTab, newTab, openSettings: () => settings.open() }
   )
   tabs.forEach((tab, i) => {
     tab.container.classList.toggle('hidden', i !== activeTabIdx)

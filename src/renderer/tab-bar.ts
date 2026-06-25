@@ -6,6 +6,7 @@ export interface TabBarHandlers {
   select(index: number): void
   close(index: number): void
   newTab(profileId?: string): void
+  openSettings(): void
 }
 
 export function renderTabBar(
@@ -67,4 +68,11 @@ export function renderTabBar(
     })
   })
   el.appendChild(chooser)
+
+  const settingsBtn = document.createElement('div')
+  settingsBtn.className = 'tab-btn settings-btn'
+  settingsBtn.textContent = '⚙'
+  settingsBtn.title = 'Appearance & settings (Ctrl+Shift+A)'
+  settingsBtn.addEventListener('click', () => on.openSettings())
+  el.appendChild(settingsBtn)
 }

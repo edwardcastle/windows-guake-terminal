@@ -65,6 +65,7 @@ html, body, #app {
   color: var(--ui-muted);
 }
 .tab-btn:hover { color: var(--ui-fg); }
+.tab-btn.settings-btn { margin-left: auto; font-size: 14px; }
 
 #profile-menu {
   position: absolute;
