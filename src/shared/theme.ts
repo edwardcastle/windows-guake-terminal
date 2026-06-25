@@ -202,16 +202,32 @@ export interface UiPalette {
   uiMuted: string
 }
 
+export function contrastRatio(a: string, b: string): number {
+  const la = relativeLuminance(a)
+  const lb = relativeLuminance(b)
+  const hi = Math.max(la, lb)
+  const lo = Math.min(la, lb)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
 export function uiPalette(theme: TerminalTheme, accent: string): UiPalette {
   const light = isLight(theme)
   const contrast = light ? '#000000' : '#ffffff'
+  const uiBg = mix(theme.background, '#000000', light ? 0.06 : 0.18)
+  // Muted chrome text: the most-dimmed foreground that still clears a 3:1
+  // contrast floor on the chrome background (keeps light themes legible).
+  let uiMuted = theme.foreground
+  for (let t = 0.45; t > 0; t -= 0.05) {
+    const cand = mix(theme.foreground, theme.background, t)
+    if (contrastRatio(cand, uiBg) >= 3) { uiMuted = cand; break }
+  }
   return {
     termBg: theme.background,
-    uiBg: mix(theme.background, '#000000', light ? 0.06 : 0.18),
+    uiBg,
     uiFg: theme.foreground,
     uiAccent: deriveAccent(theme, accent),
     uiBorder: mix(theme.background, contrast, 0.16),
-    uiMuted: mix(theme.foreground, theme.background, 0.45)
+    uiMuted
   }
 }
 

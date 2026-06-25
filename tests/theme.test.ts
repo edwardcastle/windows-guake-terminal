@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   BUILTIN_THEMES, THEME_COLOR_KEYS, isHexColor, parseHex, toHex,
   isTerminalTheme, resolveTheme,
-  mix, relativeLuminance, isLight, deriveAccent, uiPalette,
+  mix, relativeLuminance, isLight, deriveAccent, uiPalette, contrastRatio,
   resolveAppearance
 } from '../src/shared/theme'
 
@@ -81,6 +81,13 @@ describe('palette math', () => {
     const light = uiPalette(BUILTIN_THEMES['solarized-light'], '#112233')
     expect(light.uiAccent).toBe('#112233')
     expect(relativeLuminance(light.uiBg)).toBeGreaterThan(0.5)
+  })
+
+  test('uiPalette muted text clears a 3:1 contrast floor on every theme', () => {
+    for (const name of Object.keys(BUILTIN_THEMES)) {
+      const pal = uiPalette(BUILTIN_THEMES[name], '')
+      expect(contrastRatio(pal.uiMuted, pal.uiBg)).toBeGreaterThanOrEqual(3)
+    }
   })
 })
 
