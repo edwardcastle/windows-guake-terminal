@@ -132,7 +132,7 @@ export function render(): void {
         render()
       }
     )
-    if (!findBar.isOpen()) panes.get(tab.activePane)?.term.focus()
+    if (!findBar.isOpen() && !settings.isOpen()) panes.get(tab.activePane)?.term.focus()
   }
 }
 
@@ -144,9 +144,10 @@ async function boot(): Promise<void> {
   applyAppearance(config)
   window.api.onConfigChanged((c) => {
     config = c as Config
+    profiles = config.profiles
     applyAppearance(config)
     panes.forEach((p) => p.applyConfig(config))
-    settings.rebuild()
+    settings.syncFromConfig()
     render()
   })
   window.api.onOpenSettings(() => settings.open())
@@ -236,6 +237,8 @@ window.addEventListener(
   'keydown',
   (e) => {
     if (!config) return
+    const ae = document.activeElement as HTMLElement | null
+    if (ae && ae.closest && ae.closest('#settings, #findbar')) return
     const action = matchAction(config.keybindings, e)
     if (action) {
       e.preventDefault()
