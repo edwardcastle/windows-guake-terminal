@@ -92,7 +92,12 @@ export class SettingsUI {
 
   syncFromConfig(): void {
     if (!this.isOpen()) return
-    if (this.el.contains(document.activeElement)) return
+    // Only suppress the rebuild while a continuous control (a color swatch or a
+    // slider) is being dragged — rebuilding mid-drag would drop the grab. Discrete
+    // controls (select/checkbox/button/text) must rebuild so the editor body
+    // (preview, swatch grid, conditional fields) reflects the new state.
+    const ae = document.activeElement
+    if (ae instanceof HTMLInputElement && (ae.type === 'range' || ae.type === 'color')) return
     this.buildNav()
     this.renderCategory()
   }
@@ -328,13 +333,15 @@ export class SettingsUI {
     if (!next || next === oldName || next in cfg.customThemes || next in BUILTIN_THEMES) return
     const themes: Record<string, TerminalTheme> = {}
     for (const [k, v] of Object.entries(cfg.customThemes)) themes[k === oldName ? next : k] = v
-    this.patch({ customThemes: themes, theme: cfg.theme === oldName ? next : cfg.theme })
+    const profiles = this.getProfiles().map((p) => (p.theme === oldName ? { ...p, theme: next } : p))
+    this.patch({ customThemes: themes, theme: cfg.theme === oldName ? next : cfg.theme, profiles })
   }
 
   private deleteTheme(cfg: Config, name: string): void {
     const themes = { ...cfg.customThemes }
     delete themes[name]
-    this.patch({ customThemes: themes, theme: cfg.theme === name ? 'dracula' : cfg.theme })
+    const profiles = this.getProfiles().map((p) => (p.theme === name ? { ...p, theme: undefined } : p))
+    this.patch({ customThemes: themes, theme: cfg.theme === name ? 'dracula' : cfg.theme, profiles })
   }
 
   private renderTerminal(cfg: Config): void {
@@ -377,6 +384,10 @@ export class SettingsUI {
       this.colorField('Tab color', p.color ?? '#888888', (v) => this.patchProfile(p.id, { color: v }))
       this.selectField('Theme', themeOpts, p.theme ?? '', (v) => this.patchProfile(p.id, { theme: v || undefined }))
       this.textField('Font family', p.fontFamily ?? '', (v) => this.patchProfile(p.id, { fontFamily: v || undefined }))
+      this.textField('Font size (blank = global)', p.fontSize ? String(p.fontSize) : '', (v) => {
+        const n = Number(v)
+        this.patchProfile(p.id, { fontSize: v.trim() && Number.isFinite(n) ? n : undefined })
+      })
     }
   }
 
