@@ -214,3 +214,26 @@ export function uiPalette(theme: TerminalTheme, accent: string): UiPalette {
     uiMuted: mix(theme.foreground, theme.background, 0.45)
   }
 }
+
+export interface AppearanceGlobals {
+  theme: string
+  fontFamily: string
+  fontSize: number
+}
+
+export interface ProfileAppearance {
+  theme?: string
+  fontFamily?: string
+  fontSize?: number
+}
+
+export function resolveAppearance(
+  globals: AppearanceGlobals,
+  profile?: ProfileAppearance
+): AppearanceGlobals {
+  return {
+    theme: profile?.theme ?? globals.theme,
+    fontFamily: profile?.fontFamily ?? globals.fontFamily,
+    fontSize: profile?.fontSize ?? globals.fontSize
+  }
+}
