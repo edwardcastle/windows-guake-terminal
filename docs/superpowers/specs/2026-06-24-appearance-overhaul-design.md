@@ -62,7 +62,8 @@ and `pane-tree.ts`), not trapped in the renderer behind an xterm import. Introdu
 - `uiPalette(theme, accent): UiPalette` — derives chrome CSS-variable values
   (`termBg`, `uiBg`, `uiFg`, `uiAccent`, `uiBorder`, `uiMuted`) from the theme,
   luminance-aware (light themes get a light chrome). `accent === ''` ⇒ derive a
-  sensible accent from the theme (cursor, falling back to magenta).
+  sensible accent from the theme (its `blue`), and `uiMuted` is the most-dimmed
+  foreground that still clears a 3:1 contrast floor on the chrome background.
 - `resolveAppearance(cfg, profile): EffectiveAppearance` — merges a profile's
   optional `theme`/`fontFamily`/`fontSize` over the global config, returning the
   effective values a pane should use.
