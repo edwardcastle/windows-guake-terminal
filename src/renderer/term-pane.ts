@@ -18,7 +18,7 @@ export class TermPane {
 
   constructor(
     readonly id: string,
-    private profile: Profile | undefined,
+    profile: Profile | undefined,
     cfg: Config
   ) {
     this.profileId = profile?.id ?? ''
@@ -93,7 +93,8 @@ export class TermPane {
   }
 
   applyConfig(cfg: Config): void {
-    const app = resolveAppearance(cfg, this.profile)
+    const profile = cfg.profiles.find((p) => p.id === this.profileId)
+    const app = resolveAppearance(cfg, profile)
     const o = this.term.options
     o.fontFamily = app.fontFamily
     o.fontSize = app.fontSize
