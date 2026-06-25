@@ -8,7 +8,7 @@ import { TermPane } from './term-pane'
 import { renderTabBar } from './tab-bar'
 import { FindBar } from './find-bar'
 import { SettingsUI } from './settings-ui'
-import { themeOf } from './themes'
+import { uiPalette, resolveTheme } from '../shared/theme'
 
 interface Tab {
   id: string
@@ -36,9 +36,16 @@ const settings = new SettingsUI(
   (patch) => void window.api.setConfig(patch)
 )
 
-function applyUiTheme(cfg: Config): void {
-  const bg = String(themeOf(cfg.theme).background)
-  document.documentElement.style.setProperty('--term-bg', bg)
+function applyAppearance(cfg: Config): void {
+  const pal = uiPalette(resolveTheme(cfg.theme, cfg.customThemes), cfg.accent)
+  const s = document.documentElement.style
+  s.setProperty('--term-bg', pal.termBg)
+  s.setProperty('--ui-bg', pal.uiBg)
+  s.setProperty('--ui-fg', pal.uiFg)
+  s.setProperty('--ui-accent', pal.uiAccent)
+  s.setProperty('--ui-border', pal.uiBorder)
+  s.setProperty('--ui-muted', pal.uiMuted)
+  s.setProperty('--term-padding', `${cfg.padding}px`)
 }
 
 function activeTab(): Tab | undefined { return tabs[activeTabIdx] }
@@ -48,7 +55,8 @@ function activePane(): TermPane | undefined {
 }
 
 function createPane(profileId: string): TermPane {
-  const pane = new TermPane(uid('p'), profileId, config)
+  const profile = profiles.find((p) => p.id === profileId)
+  const pane = new TermPane(uid('p'), profile, config)
   panes.set(pane.id, pane)
   pane.onTitle = (title) => {
     const tab = tabs.find((t) => leaves(t.root).includes(pane.id))
@@ -133,11 +141,11 @@ async function boot(): Promise<void> {
   profiles = (await window.api.getProfiles()) as Profile[]
   window.api.onData((id, d) => panes.get(id)?.term.write(d))
   window.api.onExit((id, c) => panes.get(id)?.handleExit(c))
-  applyUiTheme(config)
+  applyAppearance(config)
   window.api.onConfigChanged((c) => {
     config = c as Config
+    applyAppearance(config)
     panes.forEach((p) => p.applyConfig(config))
-    applyUiTheme(config)
     settings.rebuild()
     render()
   })
