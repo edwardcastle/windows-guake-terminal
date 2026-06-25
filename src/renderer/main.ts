@@ -49,6 +49,10 @@ function applyAppearance(cfg: Config): void {
 }
 
 function activeTab(): Tab | undefined { return tabs[activeTabIdx] }
+function colorForTab(t: Tab): string | undefined {
+  const pid = panes.get(t.activePane)?.profileId
+  return profiles.find((p) => p.id === pid)?.color
+}
 function activePane(): TermPane | undefined {
   const t = activeTab()
   return t ? panes.get(t.activePane) : undefined
@@ -112,7 +116,7 @@ export function nextTab(delta: 1 | -1): void {
 export function render(): void {
   renderTabBar(
     tabbarEl,
-    tabs.map((t) => ({ id: t.id, title: t.title })),
+    tabs.map((t) => ({ id: t.id, title: t.title, color: colorForTab(t) })),
     activeTabIdx,
     profiles,
     { select: selectTab, close: closeTab, newTab }

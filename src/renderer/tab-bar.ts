@@ -1,6 +1,6 @@
 import type { Profile } from '../shared/config'
 
-export interface TabInfo { id: string; title: string }
+export interface TabInfo { id: string; title: string; color?: string }
 
 export interface TabBarHandlers {
   select(index: number): void
@@ -19,7 +19,14 @@ export function renderTabBar(
   tabs.forEach((tab, i) => {
     const div = document.createElement('div')
     div.className = 'tab' + (i === activeIdx ? ' active' : '')
+    if (tab.color) {
+      const dot = document.createElement('span')
+      dot.className = 'dot'
+      dot.style.background = tab.color
+      div.appendChild(dot)
+    }
     const title = document.createElement('span')
+    title.className = 'title'
     title.textContent = tab.title
     const close = document.createElement('span')
     close.className = 'close'
