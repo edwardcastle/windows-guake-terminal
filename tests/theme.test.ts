@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import {
   BUILTIN_THEMES, THEME_COLOR_KEYS, isHexColor, parseHex, toHex,
-  isTerminalTheme, resolveTheme
+  isTerminalTheme, resolveTheme,
+  mix, relativeLuminance, isLight, deriveAccent, uiPalette
 } from '../src/shared/theme'
 
 describe('hex helpers', () => {
@@ -42,5 +43,42 @@ describe('themes', () => {
     expect(resolveTheme('mine', { mine })).toBe(mine)
     expect(resolveTheme('nord')).toBe(BUILTIN_THEMES.nord)
     expect(resolveTheme('does-not-exist')).toBe(BUILTIN_THEMES.dracula)
+  })
+})
+
+describe('palette math', () => {
+  test('mix blends two colors at t', () => {
+    expect(mix('#000000', '#ffffff', 0.5)).toBe('#808080')
+    expect(mix('#000000', '#ffffff', 0)).toBe('#000000')
+    expect(mix('#000000', '#ffffff', 1)).toBe('#ffffff')
+  })
+
+  test('relativeLuminance ranks white above black', () => {
+    expect(relativeLuminance('#ffffff')).toBeCloseTo(1, 5)
+    expect(relativeLuminance('#000000')).toBe(0)
+    expect(relativeLuminance('#ffffff')).toBeGreaterThan(relativeLuminance('#808080'))
+  })
+
+  test('isLight is true only for light backgrounds', () => {
+    expect(isLight(BUILTIN_THEMES['solarized-light'])).toBe(true)
+    expect(isLight(BUILTIN_THEMES.dracula)).toBe(false)
+  })
+
+  test('deriveAccent returns override when hex, else theme blue', () => {
+    expect(deriveAccent(BUILTIN_THEMES.dracula, '#ff0000')).toBe('#ff0000')
+    expect(deriveAccent(BUILTIN_THEMES.dracula, '')).toBe(BUILTIN_THEMES.dracula.blue)
+    expect(deriveAccent(BUILTIN_THEMES.dracula, 'garbage')).toBe(BUILTIN_THEMES.dracula.blue)
+  })
+
+  test('uiPalette passes through and derives a matching-lightness chrome', () => {
+    const dark = uiPalette(BUILTIN_THEMES.dracula, '')
+    expect(dark.termBg).toBe(BUILTIN_THEMES.dracula.background)
+    expect(dark.uiFg).toBe(BUILTIN_THEMES.dracula.foreground)
+    expect(dark.uiAccent).toBe(BUILTIN_THEMES.dracula.blue)
+    expect(relativeLuminance(dark.uiBg)).toBeLessThan(0.5)
+
+    const light = uiPalette(BUILTIN_THEMES['solarized-light'], '#112233')
+    expect(light.uiAccent).toBe('#112233')
+    expect(relativeLuminance(light.uiBg)).toBeGreaterThan(0.5)
   })
 })

@@ -165,3 +165,52 @@ export function resolveTheme(
 ): TerminalTheme {
   return custom[name] ?? BUILTIN_THEMES[name] ?? BUILTIN_THEMES.dracula
 }
+
+export function mix(a: string, b: string, t: number): string {
+  const x = parseHex(a)
+  const y = parseHex(b)
+  return toHex({
+    r: x.r + (y.r - x.r) * t,
+    g: x.g + (y.g - x.g) * t,
+    b: x.b + (y.b - x.b) * t
+  })
+}
+
+export function relativeLuminance(hex: string): number {
+  const { r, g, b } = parseHex(hex)
+  const lin = (c: number): number => {
+    const s = c / 255
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+}
+
+export function isLight(theme: TerminalTheme): boolean {
+  return relativeLuminance(theme.background) > 0.5
+}
+
+export function deriveAccent(theme: TerminalTheme, accent: string): string {
+  return isHexColor(accent) ? accent : theme.blue
+}
+
+export interface UiPalette {
+  termBg: string
+  uiBg: string
+  uiFg: string
+  uiAccent: string
+  uiBorder: string
+  uiMuted: string
+}
+
+export function uiPalette(theme: TerminalTheme, accent: string): UiPalette {
+  const light = isLight(theme)
+  const contrast = light ? '#000000' : '#ffffff'
+  return {
+    termBg: theme.background,
+    uiBg: mix(theme.background, '#000000', light ? 0.06 : 0.18),
+    uiFg: theme.foreground,
+    uiAccent: deriveAccent(theme, accent),
+    uiBorder: mix(theme.background, contrast, 0.16),
+    uiMuted: mix(theme.foreground, theme.background, 0.45)
+  }
+}
