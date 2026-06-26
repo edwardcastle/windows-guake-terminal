@@ -6,6 +6,7 @@
   --ui-border: #3a3c4e;
   --ui-muted: #8a8aa0;
   --term-padding: 6px;
+  --win-opacity: 1;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,6 +22,13 @@ html, body, #app {
 }
 
 #app { display: flex; flex-direction: column; }
+
+/* Linux: setOpacity() is a no-op, so the window is created transparent and
+   opacity is applied here. body stays transparent so #app's faded background
+   composites over the desktop. (Windows/macOS use native setOpacity instead.) */
+html.transparent-window,
+html.transparent-window body { background: transparent; }
+html.transparent-window #app { opacity: var(--win-opacity); }
 
 /* ---- tab bar ---- */
 #tabbar {

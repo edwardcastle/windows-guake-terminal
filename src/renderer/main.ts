@@ -47,6 +47,7 @@ function applyAppearance(cfg: Config): void {
   s.setProperty('--ui-border', pal.uiBorder)
   s.setProperty('--ui-muted', pal.uiMuted)
   s.setProperty('--term-padding', `${cfg.padding}px`)
+  s.setProperty('--win-opacity', String(cfg.opacity))
 }
 
 function activeTab(): Tab | undefined { return tabs[activeTabIdx] }
@@ -146,6 +147,7 @@ async function boot(): Promise<void> {
   profiles = (await window.api.getProfiles()) as Profile[]
   window.api.onData((id, d) => panes.get(id)?.term.write(d))
   window.api.onExit((id, c) => panes.get(id)?.handleExit(c))
+  if (window.api.platform === 'linux') document.documentElement.classList.add('transparent-window')
   applyAppearance(config)
   window.api.onConfigChanged((c) => {
     config = c as Config

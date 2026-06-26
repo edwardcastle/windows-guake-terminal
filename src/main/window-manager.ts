@@ -7,13 +7,18 @@ export class WindowManager {
   private animating = false
 
   constructor(private getConfig: () => Config) {
+    // setOpacity() is a no-op on Linux, so opacity there is driven by a
+    // transparent window + CSS opacity in the renderer. Windows/macOS keep the
+    // native setOpacity path (see applyAppearance).
+    const transparent = process.platform === 'linux'
     this.win = new BrowserWindow({
       show: false,
       frame: false,
       alwaysOnTop: true,
       skipTaskbar: true,
       resizable: true,
-      backgroundColor: '#282a36',
+      transparent,
+      backgroundColor: transparent ? '#00000000' : '#282a36',
       webPreferences: {
         preload: path.join(__dirname, '../preload/index.js'),
         sandbox: false
