@@ -238,6 +238,19 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 }
 .theme-preview span { flex: 1; }
 
+.theme-sample {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.theme-sample-ansi { letter-spacing: 1px; margin-top: 2px; }
+
 .editor-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .btn {
   background: var(--term-bg);

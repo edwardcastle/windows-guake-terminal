@@ -263,6 +263,7 @@ export class SettingsUI {
       preview.appendChild(span)
     }
     this.content.appendChild(preview)
+    this.content.appendChild(this.themeSample(theme))
 
     if (isCustom) {
       this.textField('Theme name', name, (v) => this.renameTheme(cfg, name, v.trim()))
@@ -346,6 +347,41 @@ export class SettingsUI {
     delete themes[name]
     const profiles = this.getProfiles().map((p) => (p.theme === name ? { ...p, theme: undefined } : p))
     this.patch({ customThemes: themes, theme: cfg.theme === name ? 'dracula' : cfg.theme, profiles })
+  }
+
+  private themeSample(theme: TerminalTheme): HTMLElement {
+    const box = document.createElement('div')
+    box.className = 'theme-sample'
+    box.style.background = theme.background
+    box.style.color = theme.foreground
+    const span = (text: string, color?: string, bg?: string): HTMLSpanElement => {
+      const s = document.createElement('span')
+      s.textContent = text
+      if (color) s.style.color = color
+      if (bg) s.style.background = bg
+      return s
+    }
+    const l1 = document.createElement('div')
+    l1.append(
+      span('user', theme.green), span('@'), span('host', theme.green), span(':'),
+      span('~/project', theme.blue), span('$ '), span('npm run build')
+    )
+    const l2 = document.createElement('div')
+    l2.append(
+      span('ok', theme.green), span('  '), span('warn', theme.yellow), span('  '),
+      span('error', theme.red), span('  '), span('info', theme.cyan)
+    )
+    const l3 = document.createElement('div')
+    l3.append(span('selected', theme.foreground, theme.selectionBackground), span(' '), span('▏', theme.cursor))
+    const ansi = document.createElement('div')
+    ansi.className = 'theme-sample-ansi'
+    for (const k of THEME_COLOR_KEYS) {
+      if (k === 'background' || k === 'foreground' || k === 'cursor' ||
+          k === 'cursorAccent' || k === 'selectionBackground') continue
+      ansi.append(span('▆', theme[k]))
+    }
+    box.append(l1, l2, l3, ansi)
+    return box
   }
 
   private renderTerminal(cfg: Config): void {
