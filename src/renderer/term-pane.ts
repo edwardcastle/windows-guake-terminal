@@ -6,6 +6,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { Config, Profile } from '../shared/config'
 import { resolveAppearance, resolveTheme } from '../shared/theme'
+import { openContextMenu } from './context-menu'
 
 export class TermPane {
   readonly el = document.createElement('div')
@@ -58,11 +59,23 @@ export class TermPane {
       return true
     })
     new ResizeObserver(() => this.fitNow()).observe(this.el)
-    this.el.addEventListener('contextmenu', async (e) => {
+    this.el.addEventListener('contextmenu', (e) => {
       e.preventDefault()
-      const text = await navigator.clipboard.readText()
-      if (text && !this.exited) window.api.write(this.id, text)
+      const sel = this.term.getSelection()
+      openContextMenu(e.clientX, e.clientY, [
+        { label: 'Copy', disabled: !sel, onClick: () => { if (sel) void navigator.clipboard.writeText(sel) } },
+        { label: 'Paste', onClick: () => void this.paste() },
+        { label: 'Select all', onClick: () => this.term.selectAll() },
+        { label: 'Clear', onClick: () => this.term.clear() }
+      ])
     })
+  }
+
+  // Bracketed-paste-safe: term.paste() wraps the text in paste markers when the
+  // running app enabled bracketed paste, so newlines don't auto-execute.
+  async paste(): Promise<void> {
+    const text = await navigator.clipboard.readText()
+    if (text && !this.exited) this.term.paste(text)
   }
 
   async spawnShell(): Promise<void> {

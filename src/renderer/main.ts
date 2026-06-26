@@ -246,8 +246,7 @@ async function runAction(action: string): Promise<void> {
       break
     }
     case 'paste': {
-      const text = await navigator.clipboard.readText()
-      if (text && pane && !pane.exited) window.api.write(pane.id, text)
+      await pane?.paste()
       break
     }
     case 'fontBigger': changeFontSize(1); break

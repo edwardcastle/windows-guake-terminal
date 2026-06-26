@@ -315,4 +315,30 @@ html.transparent-window #app { opacity: var(--win-opacity); }
   min-width: 60px;
 }
 
+#context-menu {
+  position: absolute;
+  z-index: 60;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 130px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+.menu-item {
+  background: none;
+  border: none;
+  color: var(--ui-fg);
+  text-align: left;
+  padding: 6px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.menu-item:hover:not(:disabled) { background: var(--ui-accent); color: var(--ui-bg); }
+.menu-item:disabled { opacity: 0.4; cursor: default; }
+
 .hidden { display: none !important; }
