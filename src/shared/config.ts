@@ -58,7 +58,7 @@ export const DEFAULT_CONFIG: Config = {
     nextTab: 'Ctrl+Tab',
     prevTab: 'Ctrl+Shift+Tab',
     splitRight: 'Ctrl+Shift+D',
-    splitDown: 'Ctrl+Shift+E',
+    splitDown: 'Ctrl+Shift+S',
     focusLeft: 'Alt+ArrowLeft',
     focusRight: 'Alt+ArrowRight',
     focusUp: 'Alt+ArrowUp',
