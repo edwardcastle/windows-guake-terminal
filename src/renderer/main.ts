@@ -33,7 +33,8 @@ const settings = new SettingsUI(
   document.body,
   () => config,
   () => profiles,
-  (patch) => void window.api.setConfig(patch)
+  (patch) => void window.api.setConfig(patch),
+  () => activePane()?.term.focus()
 )
 
 function applyAppearance(cfg: Config): void {

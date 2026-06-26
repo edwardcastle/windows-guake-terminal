@@ -44,7 +44,8 @@ export class SettingsUI {
     parent: HTMLElement,
     private getConfig: () => Config,
     private getProfiles: () => Profile[],
-    private patch: Patch
+    private patch: Patch,
+    private onClose?: () => void
   ) {
     this.el.id = 'settings'
     this.el.className = 'overlay hidden'
@@ -88,7 +89,10 @@ export class SettingsUI {
     this.dialog.focus()
   }
 
-  close(): void { this.el.classList.add('hidden') }
+  close(): void {
+    this.el.classList.add('hidden')
+    this.onClose?.()
+  }
 
   syncFromConfig(): void {
     if (!this.isOpen()) return
