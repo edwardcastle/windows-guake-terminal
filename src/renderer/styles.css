@@ -65,15 +65,16 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 .tab .close:hover { opacity: 1; color: #ff5555; }
 
 .tab-btn {
-  padding: 0 12px;
+  padding: 0 14px;
   height: 100%;
   display: flex;
   align-items: center;
   cursor: pointer;
   color: var(--ui-muted);
+  font-size: 17px;
 }
 .tab-btn:hover { color: var(--ui-fg); }
-.tab-btn.settings-btn { margin-left: auto; font-size: 14px; }
+.tab-btn.settings-btn { margin-left: auto; }
 
 #profile-menu {
   position: absolute;
@@ -271,5 +272,47 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 .settings-content::-webkit-scrollbar { width: 10px; }
 .settings-content::-webkit-scrollbar-thumb { background: var(--ui-border); border-radius: 6px; }
 .settings-content::-webkit-scrollbar-track { background: transparent; }
+
+#tab-menu {
+  position: absolute;
+  z-index: 60;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+#tab-menu .btn { width: 100%; text-align: left; }
+.tab-menu-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tab-menu-row .swatch-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1px solid var(--ui-border);
+}
+.tab-menu-row input[type='color'] {
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+}
+.tab-rename {
+  background: var(--term-bg);
+  border: 1px solid var(--ui-accent);
+  color: var(--ui-fg);
+  font: inherit;
+  padding: 0 4px;
+  border-radius: 4px;
+  outline: none;
+  width: 100%;
+  min-width: 60px;
+}
 
 .hidden { display: none !important; }
