@@ -362,7 +362,10 @@ export class SettingsUI {
   private renderWindow(cfg: Config): void {
     this.sectionTitle('Window')
     this.sliderField('Opacity', cfg.opacity, 0.3, 1, 0.05, (v) => `${Math.round(v * 100)}%`, (v) => this.patch({ opacity: v }))
-    this.checkField('Acrylic blur (Win11)', cfg.acrylic, (v) => this.patch({ acrylic: v }))
+    // Acrylic is a Windows-only material; hide the dead control elsewhere.
+    if (window.api.platform === 'win32') {
+      this.checkField('Acrylic blur (Win11)', cfg.acrylic, (v) => this.patch({ acrylic: v }))
+    }
     this.sliderField('Width', cfg.widthPct, 20, 100, 5, (v) => `${v}%`, (v) => this.patch({ widthPct: v }))
     this.sliderField('Height', cfg.heightPct, 20, 100, 5, (v) => `${v}%`, (v) => this.patch({ heightPct: v }))
     this.sliderField('Animation', cfg.animationMs, 0, 1000, 25, (v) => `${v}ms`, (v) => this.patch({ animationMs: v }))
