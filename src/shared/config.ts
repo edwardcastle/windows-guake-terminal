@@ -79,7 +79,7 @@ export const DEFAULT_CONFIG: Config = {
   fontWeight: 400,
   letterSpacing: 0,
   padding: 6,
-  opacity: 0.95,
+  opacity: 0.9,
   acrylic: false,
   fontFamily: 'Cascadia Mono, Consolas, monospace',
   fontSize: 14,
