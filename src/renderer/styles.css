@@ -1,8 +1,12 @@
 :root {
-  --ui-bg: #1e1f29;
-  --ui-fg: #c8c8d0;
-  --ui-accent: #bd93f9;
   --term-bg: #282a36;
+  --ui-bg: #21222c;
+  --ui-fg: #f8f8f2;
+  --ui-accent: #bd93f9;
+  --ui-border: #3a3c4e;
+  --ui-muted: #8a8aa0;
+  --term-padding: 6px;
+  --win-opacity: 1;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -11,7 +15,7 @@ html, body, #app {
   height: 100%;
   overflow: hidden;
   background: var(--term-bg);
-  font-family: 'Segoe UI', sans-serif;
+  font-family: 'Segoe UI', system-ui, sans-serif;
   font-size: 13px;
   color: var(--ui-fg);
   user-select: none;
@@ -19,57 +23,76 @@ html, body, #app {
 
 #app { display: flex; flex-direction: column; }
 
+/* Linux: setOpacity() is a no-op, so the window is created transparent and
+   opacity is applied here. body stays transparent so #app's faded background
+   composites over the desktop. (Windows/macOS use native setOpacity instead.) */
+html.transparent-window,
+html.transparent-window body { background: transparent; }
+html.transparent-window #app { opacity: var(--win-opacity); }
+
+/* ---- tab bar ---- */
 #tabbar {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   background: var(--ui-bg);
-  height: 32px;
+  height: 34px;
   flex: none;
+  border-bottom: 1px solid var(--ui-border);
 }
-
 .tab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 10px;
+  gap: 7px;
+  padding: 0 12px;
   height: 100%;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   white-space: nowrap;
   max-width: 220px;
   overflow: hidden;
+  color: var(--ui-muted);
+  transition: color 0.12s, background 0.12s;
 }
-.tab.active { border-bottom-color: var(--ui-accent); background: var(--term-bg); }
-.tab .close { opacity: 0.5; padding: 0 2px; }
+.tab:hover { color: var(--ui-fg); }
+.tab.active {
+  color: var(--ui-fg);
+  border-bottom-color: var(--ui-accent);
+  background: var(--term-bg);
+}
+.tab .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.tab .title { overflow: hidden; text-overflow: ellipsis; }
+.tab .close { opacity: 0.5; padding: 0 2px; border-radius: 3px; }
 .tab .close:hover { opacity: 1; color: #ff5555; }
 
 .tab-btn {
-  padding: 0 10px;
+  padding: 0 14px;
   height: 100%;
   display: flex;
   align-items: center;
   cursor: pointer;
-  opacity: 0.7;
+  color: var(--ui-muted);
+  font-size: 17px;
 }
-.tab-btn:hover { opacity: 1; }
+.tab-btn:hover { color: var(--ui-fg); }
+.tab-btn.settings-btn { margin-left: auto; }
 
 #profile-menu {
   position: absolute;
   z-index: 50;
   background: var(--ui-bg);
-  border: 1px solid #444;
-  border-radius: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
   padding: 4px 0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 #profile-menu div { padding: 6px 16px; cursor: pointer; }
-#profile-menu div:hover { background: var(--ui-accent); color: #000; }
+#profile-menu div:hover { background: var(--ui-accent); color: var(--ui-bg); }
 
+/* ---- panes ---- */
 #panes { position: relative; flex: 1; }
-
 .tab-container { position: absolute; inset: 0; }
 .tab-container.hidden { display: none; }
-
-.pane { position: absolute; padding: 2px; }
+.pane { position: absolute; padding: var(--term-padding); overflow: hidden; }
 .pane.active-pane { outline: 1px solid var(--ui-accent); outline-offset: -1px; }
 .xterm { height: 100%; }
 
@@ -78,14 +101,8 @@ html, body, #app {
 .splitter.col { cursor: ns-resize; }
 .splitter:hover { background: var(--ui-accent); opacity: 0.4; }
 
-.overlay {
-  position: absolute;
-  z-index: 100;
-  background: var(--ui-bg);
-  border: 1px solid #444;
-  border-radius: 6px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
-}
+/* ---- overlays ---- */
+.overlay { position: absolute; z-index: 100; }
 
 #findbar {
   top: 8px;
@@ -93,36 +110,209 @@ html, body, #app {
   padding: 6px 8px;
   display: flex;
   gap: 6px;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 #findbar input {
   background: var(--term-bg);
-  border: 1px solid #555;
+  border: 1px solid var(--ui-border);
   color: var(--ui-fg);
-  padding: 3px 6px;
-  border-radius: 3px;
+  padding: 4px 7px;
+  border-radius: 6px;
   outline: none;
-  width: 200px;
+  width: 220px;
+}
+#findbar input:focus { border-color: var(--ui-accent); }
+
+/* ---- settings modal ---- */
+#settings {
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 6vh;
+  background: rgba(0, 0, 0, 0.45);
+}
+.settings-dialog {
+  width: 620px;
+  max-width: calc(100% - 32px);
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--ui-bg);
+  color: var(--ui-fg);
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  box-shadow: 0 16px 56px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  outline: none;
+}
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.settings-head h2 { font-size: 14px; color: var(--ui-accent); }
+.settings-head .close { cursor: pointer; opacity: 0.6; font-size: 15px; }
+.settings-head .close:hover { opacity: 1; }
+.settings-body { display: flex; min-height: 0; flex: 1; }
+.settings-nav {
+  flex: none;
+  width: 132px;
+  padding: 8px;
+  border-right: 1px solid var(--ui-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-item { padding: 7px 10px; border-radius: 7px; cursor: pointer; color: var(--ui-muted); }
+.nav-item:hover { background: var(--ui-border); color: var(--ui-fg); }
+.nav-item.active { background: var(--ui-accent); color: var(--ui-bg); }
+.settings-content { flex: 1; overflow-y: auto; padding: 14px 18px; }
+
+.section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ui-muted);
+  margin: 14px 0 8px;
+}
+.section-title:first-child { margin-top: 0; }
+
+.field { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.field > label { flex: none; width: 132px; }
+.field > *:last-child { flex: 1; }
+
+#settings input[type='text'],
+#settings input[type='number'],
+#settings select,
+#settings textarea {
+  background: var(--term-bg);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-fg);
+  padding: 5px 8px;
+  border-radius: 6px;
+  outline: none;
+  width: 100%;
+  font-family: inherit;
+  font-size: 12px;
+}
+#settings input:focus,
+#settings select:focus,
+#settings textarea:focus { border-color: var(--ui-accent); }
+#settings input[type='checkbox'] { flex: none; width: auto; accent-color: var(--ui-accent); }
+
+.slider-control { display: flex; align-items: center; gap: 10px; }
+.slider-control input[type='range'] { flex: 1; accent-color: var(--ui-accent); }
+.range-val {
+  flex: none;
+  min-width: 42px;
+  text-align: right;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-#settings {
-  top: 40px;
-  right: 16px;
-  width: 320px;
-  max-height: calc(100% - 60px);
-  overflow-y: auto;
-  padding: 14px;
+.color-control { display: flex; align-items: center; gap: 8px; }
+.color-control input[type='color'] {
+  flex: none;
+  width: 34px; height: 24px;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
 }
-#settings h2 { font-size: 14px; margin-bottom: 10px; color: var(--ui-accent); }
-#settings .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
-#settings .row label { flex: none; }
-#settings input, #settings select {
+.color-control .hex-input { flex: 1; }
+
+.theme-preview {
+  display: flex;
+  height: 22px;
+  margin: 8px 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.theme-preview span { flex: 1; }
+
+.editor-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.btn {
   background: var(--term-bg);
-  border: 1px solid #555;
+  border: 1px solid var(--ui-border);
   color: var(--ui-fg);
-  padding: 3px 6px;
-  border-radius: 3px;
-  outline: none;
-  width: 150px;
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
 }
-#settings input[type='checkbox'] { width: auto; }
+.btn:hover { border-color: var(--ui-accent); }
+
+.import-area { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.import-area textarea { height: 96px; resize: vertical; }
+.editor-error { color: #ff5555; font-size: 12px; min-height: 14px; }
+
+.swatch-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.swatch { display: flex; align-items: center; gap: 8px; }
+.swatch input[type='color'] {
+  flex: none;
+  width: 30px; height: 22px;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+}
+.swatch input[type='color']:disabled { cursor: default; opacity: 0.6; }
+.swatch label { flex: 1; font-size: 12px; color: var(--ui-muted); }
+
+.settings-content::-webkit-scrollbar { width: 10px; }
+.settings-content::-webkit-scrollbar-thumb { background: var(--ui-border); border-radius: 6px; }
+.settings-content::-webkit-scrollbar-track { background: transparent; }
+
+#tab-menu {
+  position: absolute;
+  z-index: 60;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+#tab-menu .btn { width: 100%; text-align: left; }
+.tab-menu-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tab-menu-row .swatch-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1px solid var(--ui-border);
+}
+.tab-menu-row input[type='color'] {
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+}
+.tab-rename {
+  background: var(--term-bg);
+  border: 1px solid var(--ui-accent);
+  color: var(--ui-fg);
+  font: inherit;
+  padding: 0 4px;
+  border-radius: 4px;
+  outline: none;
+  width: 100%;
+  min-width: 60px;
+}
+
 .hidden { display: none !important; }

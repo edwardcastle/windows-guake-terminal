@@ -8,11 +8,14 @@ import { TermPane } from './term-pane'
 import { renderTabBar } from './tab-bar'
 import { FindBar } from './find-bar'
 import { SettingsUI } from './settings-ui'
-import { themeOf } from './themes'
+import { uiPalette, resolveTheme } from '../shared/theme'
+import { displayTitle, displayColor } from '../shared/tab-label'
 
 interface Tab {
   id: string
   title: string
+  customTitle?: string
+  customColor?: string
   root: PaneNode
   activePane: string
   container: HTMLDivElement
@@ -33,22 +36,43 @@ const settings = new SettingsUI(
   document.body,
   () => config,
   () => profiles,
-  (patch) => void window.api.setConfig(patch)
+  (patch) => void window.api.setConfig(patch),
+  () => activePane()?.term.focus()
 )
 
-function applyUiTheme(cfg: Config): void {
-  const bg = String(themeOf(cfg.theme).background)
-  document.documentElement.style.setProperty('--term-bg', bg)
+function applyAppearance(cfg: Config): void {
+  const pal = uiPalette(resolveTheme(cfg.theme, cfg.customThemes), cfg.accent)
+  const s = document.documentElement.style
+  s.setProperty('--term-bg', pal.termBg)
+  s.setProperty('--ui-bg', pal.uiBg)
+  s.setProperty('--ui-fg', pal.uiFg)
+  s.setProperty('--ui-accent', pal.uiAccent)
+  s.setProperty('--ui-border', pal.uiBorder)
+  s.setProperty('--ui-muted', pal.uiMuted)
+  s.setProperty('--term-padding', `${cfg.padding}px`)
+  s.setProperty('--win-opacity', String(cfg.opacity))
 }
 
 function activeTab(): Tab | undefined { return tabs[activeTabIdx] }
+function colorForTab(t: Tab): string | undefined {
+  const pid = panes.get(t.activePane)?.profileId
+  return profiles.find((p) => p.id === pid)?.color
+}
+
+function focusPane(paneId: string): void {
+  const tab = activeTab()
+  if (!tab || tab.activePane === paneId) return
+  tab.activePane = paneId
+  render()
+}
 function activePane(): TermPane | undefined {
   const t = activeTab()
   return t ? panes.get(t.activePane) : undefined
 }
 
 function createPane(profileId: string): TermPane {
-  const pane = new TermPane(uid('p'), profileId, config)
+  const profile = profiles.find((p) => p.id === profileId)
+  const pane = new TermPane(uid('p'), profile, config)
   panes.set(pane.id, pane)
   pane.onTitle = (title) => {
     const tab = tabs.find((t) => leaves(t.root).includes(pane.id))
@@ -102,12 +126,26 @@ export function nextTab(delta: 1 | -1): void {
 }
 
 export function render(): void {
+  const theme = resolveTheme(config.theme, config.customThemes)
+  const swatches = [theme.red, theme.green, theme.yellow, theme.blue, theme.magenta, theme.cyan]
   renderTabBar(
     tabbarEl,
-    tabs.map((t) => ({ id: t.id, title: t.title })),
+    tabs.map((t) => ({
+      id: t.id,
+      title: displayTitle(t.title, t.customTitle),
+      color: displayColor(colorForTab(t), t.customColor)
+    })),
     activeTabIdx,
     profiles,
-    { select: selectTab, close: closeTab, newTab }
+    swatches,
+    {
+      select: selectTab,
+      close: closeTab,
+      newTab,
+      openSettings: () => settings.open(),
+      rename: (i, name) => { const t = tabs[i]; if (t) { t.customTitle = name.trim() || undefined; render() } },
+      setColor: (i, color) => { const t = tabs[i]; if (t) { t.customColor = color || undefined; render() } }
+    }
   )
   tabs.forEach((tab, i) => {
     tab.container.classList.toggle('hidden', i !== activeTabIdx)
@@ -119,12 +157,9 @@ export function render(): void {
         tab.root = setRatio(tab.root, splitId, ratio)
         render()
       },
-      (paneId) => {
-        tab.activePane = paneId
-        render()
-      }
+      focusPane
     )
-    if (!findBar.isOpen()) panes.get(tab.activePane)?.term.focus()
+    if (!findBar.isOpen() && !settings.isOpen()) panes.get(tab.activePane)?.term.focus()
   }
 }
 
@@ -133,12 +168,14 @@ async function boot(): Promise<void> {
   profiles = (await window.api.getProfiles()) as Profile[]
   window.api.onData((id, d) => panes.get(id)?.term.write(d))
   window.api.onExit((id, c) => panes.get(id)?.handleExit(c))
-  applyUiTheme(config)
+  if (window.api.platform === 'linux') document.documentElement.classList.add('transparent-window')
+  applyAppearance(config)
   window.api.onConfigChanged((c) => {
     config = c as Config
+    profiles = config.profiles
+    applyAppearance(config)
     panes.forEach((p) => p.applyConfig(config))
-    applyUiTheme(config)
-    settings.rebuild()
+    settings.syncFromConfig()
     render()
   })
   window.api.onOpenSettings(() => settings.open())
@@ -228,6 +265,8 @@ window.addEventListener(
   'keydown',
   (e) => {
     if (!config) return
+    const ae = document.activeElement as HTMLElement | null
+    if (ae && ae.closest && ae.closest('#settings, #findbar')) return
     const action = matchAction(config.keybindings, e)
     if (action) {
       e.preventDefault()

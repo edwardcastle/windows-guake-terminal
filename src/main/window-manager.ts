@@ -7,13 +7,18 @@ export class WindowManager {
   private animating = false
 
   constructor(private getConfig: () => Config) {
+    // setOpacity() is a no-op on Linux, so opacity there is driven by a
+    // transparent window + CSS opacity in the renderer. Windows/macOS keep the
+    // native setOpacity path (see applyAppearance).
+    const transparent = process.platform === 'linux'
     this.win = new BrowserWindow({
       show: false,
       frame: false,
       alwaysOnTop: true,
       skipTaskbar: true,
       resizable: true,
-      backgroundColor: '#282a36',
+      transparent,
+      backgroundColor: transparent ? '#00000000' : '#282a36',
       webPreferences: {
         preload: path.join(__dirname, '../preload/index.js'),
         sandbox: false
@@ -94,10 +99,15 @@ export class WindowManager {
   applyAppearance(): void {
     const cfg = this.getConfig()
     this.win.setOpacity(cfg.opacity)
-    try {
-      this.win.setBackgroundMaterial(cfg.acrylic ? 'acrylic' : 'none')
-    } catch {
-      // pre-Win11 — acrylic unsupported, opacity still applies
+    // setBackgroundMaterial is a Windows-only effect. On Linux, calling it with
+    // 'none' resets the window to an opaque material, which clobbers the
+    // transparent visual that CSS opacity relies on — so only touch it on Windows.
+    if (process.platform === 'win32') {
+      try {
+        this.win.setBackgroundMaterial(cfg.acrylic ? 'acrylic' : 'none')
+      } catch {
+        // pre-Win11 — acrylic unsupported, opacity still applies
+      }
     }
     if (this.win.isVisible() && !this.animating) this.win.setBounds(this.targetBounds())
   }

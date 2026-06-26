@@ -19,13 +19,22 @@ export function renderPanes(
     const pane = panes.get(paneId)
     if (!pane) continue
     if (pane.el.parentElement !== container) container.appendChild(pane.el)
+    // Clear inset FIRST: it is the shorthand for top/right/bottom/left, so
+    // assigning it after left/top would wipe the geometry we set (the bug that
+    // stacked split panes at 0,0).
+    pane.el.style.inset = ''
     pane.el.style.left = `${r.x * W}px`
     pane.el.style.top = `${r.y * H}px`
     pane.el.style.width = `${r.w * W}px`
     pane.el.style.height = `${r.h * H}px`
-    pane.el.style.inset = ''
     pane.el.classList.toggle('active-pane', paneId === activePaneId)
-    pane.el.onmousedown = () => onFocus(paneId)
+    // Capture phase so the pane switch registers even though xterm handles
+    // mousedown on its inner elements; also focus this pane's terminal directly
+    // so input lands here regardless of render() timing.
+    if (pane.el.dataset.focusWired !== '1') {
+      pane.el.dataset.focusWired = '1'
+      pane.el.addEventListener('mousedown', () => { onFocus(paneId); pane.term.focus() }, true)
+    }
     pane.fitNow()
   }
 

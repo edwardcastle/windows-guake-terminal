@@ -6,6 +6,13 @@ import { detectProfiles } from './profiles'
 import { PtyManager, SpawnFn } from './pty-manager'
 import { WindowManager } from './window-manager'
 
+if (process.platform === 'linux') {
+  // Linux defaults to an opaque window visual; without this switch a
+  // transparent BrowserWindow still renders over an opaque (gray/black)
+  // backdrop instead of the desktop. Must be set before the app is ready.
+  app.commandLine.appendSwitch('enable-transparent-visuals')
+}
+
 if (!app.requestSingleInstanceLock()) app.quit()
 
 const realSpawn: SpawnFn = (exe, args, opts) =>

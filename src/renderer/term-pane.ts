@@ -1,33 +1,40 @@
 import { Terminal } from '@xterm/xterm'
+import type { FontWeight } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { SearchAddon } from '@xterm/addon-search'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
-import type { Config } from '../shared/config'
-import { themeOf } from './themes'
+import type { Config, Profile } from '../shared/config'
+import { resolveAppearance, resolveTheme } from '../shared/theme'
 
 export class TermPane {
   readonly el = document.createElement('div')
   readonly term: Terminal
   readonly fit = new FitAddon()
   readonly search = new SearchAddon()
+  readonly profileId: string
   exited = false
   onTitle?: (title: string) => void
 
   constructor(
     readonly id: string,
-    readonly profileId: string,
+    profile: Profile | undefined,
     cfg: Config
   ) {
+    this.profileId = profile?.id ?? ''
     this.el.className = 'pane'
+    const app = resolveAppearance(cfg, profile)
     this.term = new Terminal({
       allowProposedApi: true,
-      cursorBlink: true,
+      cursorBlink: cfg.cursorBlink,
+      cursorStyle: cfg.cursorStyle,
+      fontWeight: cfg.fontWeight as FontWeight,
+      letterSpacing: cfg.letterSpacing,
       scrollback: 10000,
-      fontFamily: cfg.fontFamily,
-      fontSize: cfg.fontSize,
+      fontFamily: app.fontFamily,
+      fontSize: app.fontSize,
       lineHeight: cfg.lineHeight,
-      theme: themeOf(cfg.theme)
+      theme: resolveTheme(app.theme, cfg.customThemes)
     })
     this.term.loadAddon(this.fit)
     this.term.loadAddon(this.search)
@@ -86,10 +93,17 @@ export class TermPane {
   }
 
   applyConfig(cfg: Config): void {
-    this.term.options.fontFamily = cfg.fontFamily
-    this.term.options.fontSize = cfg.fontSize
-    this.term.options.lineHeight = cfg.lineHeight
-    this.term.options.theme = themeOf(cfg.theme)
+    const profile = cfg.profiles.find((p) => p.id === this.profileId)
+    const app = resolveAppearance(cfg, profile)
+    const o = this.term.options
+    o.fontFamily = app.fontFamily
+    o.fontSize = app.fontSize
+    o.lineHeight = cfg.lineHeight
+    o.fontWeight = cfg.fontWeight as FontWeight
+    o.letterSpacing = cfg.letterSpacing
+    o.cursorStyle = cfg.cursorStyle
+    o.cursorBlink = cfg.cursorBlink
+    o.theme = resolveTheme(app.theme, cfg.customThemes)
     this.fitNow()
   }
 

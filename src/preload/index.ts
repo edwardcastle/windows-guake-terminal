@@ -17,7 +17,8 @@ const api = {
     ipcRenderer.on('config:changed', (_e, c) => cb(c)),
   getProfiles: () => ipcRenderer.invoke('profiles:get'),
   onOpenSettings: (cb: () => void) => ipcRenderer.on('ui:open-settings', () => cb()),
-  hideWindow: () => ipcRenderer.send('window:hide')
+  hideWindow: () => ipcRenderer.send('window:hide'),
+  platform: process.platform
 }
 
 contextBridge.exposeInMainWorld('api', api)
