@@ -100,10 +100,15 @@ export class WindowManager {
   applyAppearance(): void {
     const cfg = this.getConfig()
     this.win.setOpacity(cfg.opacity)
-    try {
-      this.win.setBackgroundMaterial(cfg.acrylic ? 'acrylic' : 'none')
-    } catch {
-      // pre-Win11 — acrylic unsupported, opacity still applies
+    // setBackgroundMaterial is a Windows-only effect. On Linux, calling it with
+    // 'none' resets the window to an opaque material, which clobbers the
+    // transparent visual that CSS opacity relies on — so only touch it on Windows.
+    if (process.platform === 'win32') {
+      try {
+        this.win.setBackgroundMaterial(cfg.acrylic ? 'acrylic' : 'none')
+      } catch {
+        // pre-Win11 — acrylic unsupported, opacity still applies
+      }
     }
     if (this.win.isVisible() && !this.animating) this.win.setBounds(this.targetBounds())
   }
