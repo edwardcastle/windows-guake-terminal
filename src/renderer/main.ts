@@ -55,6 +55,13 @@ function colorForTab(t: Tab): string | undefined {
   const pid = panes.get(t.activePane)?.profileId
   return profiles.find((p) => p.id === pid)?.color
 }
+
+function focusPane(paneId: string): void {
+  const tab = activeTab()
+  if (!tab || tab.activePane === paneId) return
+  tab.activePane = paneId
+  render()
+}
 function activePane(): TermPane | undefined {
   const t = activeTab()
   return t ? panes.get(t.activePane) : undefined
@@ -133,10 +140,7 @@ export function render(): void {
         tab.root = setRatio(tab.root, splitId, ratio)
         render()
       },
-      (paneId) => {
-        tab.activePane = paneId
-        render()
-      }
+      focusPane
     )
     if (!findBar.isOpen() && !settings.isOpen()) panes.get(tab.activePane)?.term.focus()
   }

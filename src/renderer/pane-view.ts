@@ -25,7 +25,13 @@ export function renderPanes(
     pane.el.style.height = `${r.h * H}px`
     pane.el.style.inset = ''
     pane.el.classList.toggle('active-pane', paneId === activePaneId)
-    pane.el.onmousedown = () => onFocus(paneId)
+    // Capture phase so the pane switch registers even though xterm handles
+    // mousedown on its inner elements; also focus this pane's terminal directly
+    // so input lands here regardless of render() timing.
+    if (pane.el.dataset.focusWired !== '1') {
+      pane.el.dataset.focusWired = '1'
+      pane.el.addEventListener('mousedown', () => { onFocus(paneId); pane.term.focus() }, true)
+    }
     pane.fitNow()
   }
 
