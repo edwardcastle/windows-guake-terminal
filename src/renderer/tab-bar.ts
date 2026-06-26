@@ -1,4 +1,5 @@
 import type { Profile } from '../shared/config'
+import { openTabMenu } from './tab-context-menu'
 
 export interface TabInfo { id: string; title: string; color?: string }
 
@@ -7,6 +8,37 @@ export interface TabBarHandlers {
   close(index: number): void
   newTab(profileId?: string): void
   openSettings(): void
+  rename(index: number, name: string): void
+  setColor(index: number, color: string): void
+}
+
+function startRename(
+  titleEl: HTMLElement,
+  index: number,
+  apply: (i: number, name: string) => void
+): void {
+  const original = titleEl.textContent ?? ''
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.className = 'tab-rename'
+  input.value = original
+  let done = false
+  const finish = (commit: boolean): void => {
+    if (done) return
+    done = true
+    if (commit) apply(index, input.value)
+    else titleEl.textContent = original
+  }
+  input.addEventListener('keydown', (e) => {
+    e.stopPropagation()
+    if (e.key === 'Enter') { e.preventDefault(); finish(true) }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false) }
+  })
+  input.addEventListener('blur', () => finish(true))
+  titleEl.textContent = ''
+  titleEl.appendChild(input)
+  input.focus()
+  input.select()
 }
 
 export function renderTabBar(
@@ -14,6 +46,7 @@ export function renderTabBar(
   tabs: TabInfo[],
   activeIdx: number,
   profiles: Profile[],
+  swatches: string[],
   on: TabBarHandlers
 ): void {
   el.textContent = ''
@@ -29,12 +62,23 @@ export function renderTabBar(
     const title = document.createElement('span')
     title.className = 'title'
     title.textContent = tab.title
+    title.addEventListener('dblclick', (e) => {
+      e.stopPropagation()
+      startRename(title, i, on.rename)
+    })
     const close = document.createElement('span')
     close.className = 'close'
     close.textContent = '✕'
     close.addEventListener('click', (e) => { e.stopPropagation(); on.close(i) })
     div.append(title, close)
     div.addEventListener('click', () => on.select(i))
+    div.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      openTabMenu(e.clientX, e.clientY, swatches, {
+        startRename: () => startRename(title, i, on.rename),
+        setColor: (c) => on.setColor(i, c)
+      })
+    })
     el.appendChild(div)
   })
 

@@ -9,10 +9,13 @@ import { renderTabBar } from './tab-bar'
 import { FindBar } from './find-bar'
 import { SettingsUI } from './settings-ui'
 import { uiPalette, resolveTheme } from '../shared/theme'
+import { displayTitle, displayColor } from '../shared/tab-label'
 
 interface Tab {
   id: string
   title: string
+  customTitle?: string
+  customColor?: string
   root: PaneNode
   activePane: string
   container: HTMLDivElement
@@ -123,12 +126,26 @@ export function nextTab(delta: 1 | -1): void {
 }
 
 export function render(): void {
+  const theme = resolveTheme(config.theme, config.customThemes)
+  const swatches = [theme.red, theme.green, theme.yellow, theme.blue, theme.magenta, theme.cyan]
   renderTabBar(
     tabbarEl,
-    tabs.map((t) => ({ id: t.id, title: t.title, color: colorForTab(t) })),
+    tabs.map((t) => ({
+      id: t.id,
+      title: displayTitle(t.title, t.customTitle),
+      color: displayColor(colorForTab(t), t.customColor)
+    })),
     activeTabIdx,
     profiles,
-    { select: selectTab, close: closeTab, newTab, openSettings: () => settings.open() }
+    swatches,
+    {
+      select: selectTab,
+      close: closeTab,
+      newTab,
+      openSettings: () => settings.open(),
+      rename: (i, name) => { const t = tabs[i]; if (t) { t.customTitle = name.trim() || undefined; render() } },
+      setColor: (i, color) => { const t = tabs[i]; if (t) { t.customColor = color || undefined; render() } }
+    }
   )
   tabs.forEach((tab, i) => {
     tab.container.classList.toggle('hidden', i !== activeTabIdx)
