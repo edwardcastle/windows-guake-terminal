@@ -141,6 +141,7 @@ app.on('second-instance', () => wm?.toggle())
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   ptys.killAll()
+  store.flush()
 })
 app.on('window-all-closed', () => {
   // keep running in the tray
