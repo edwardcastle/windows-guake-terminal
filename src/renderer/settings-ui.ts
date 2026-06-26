@@ -357,6 +357,8 @@ export class SettingsUI {
     this.sliderField('Letter spacing', cfg.letterSpacing, -2, 4, 0.5, (v) => `${v}px`, (v) => this.patch({ letterSpacing: v }))
     this.sectionTitle('Layout')
     this.sliderField('Padding', cfg.padding, 0, 24, 1, (v) => `${v}px`, (v) => this.patch({ padding: v }))
+    this.sectionTitle('Buffer')
+    this.sliderField('Scrollback', cfg.scrollback, 1000, 100000, 1000, (v) => `${Math.round(v / 1000)}k lines`, (v) => this.patch({ scrollback: v }))
   }
 
   private renderWindow(cfg: Config): void {

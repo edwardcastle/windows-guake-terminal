@@ -30,7 +30,7 @@ export class TermPane {
       cursorStyle: cfg.cursorStyle,
       fontWeight: cfg.fontWeight as FontWeight,
       letterSpacing: cfg.letterSpacing,
-      scrollback: 10000,
+      scrollback: cfg.scrollback,
       fontFamily: app.fontFamily,
       fontSize: app.fontSize,
       lineHeight: cfg.lineHeight,
@@ -103,6 +103,7 @@ export class TermPane {
     o.letterSpacing = cfg.letterSpacing
     o.cursorStyle = cfg.cursorStyle
     o.cursorBlink = cfg.cursorBlink
+    o.scrollback = cfg.scrollback
     o.theme = resolveTheme(app.theme, cfg.customThemes)
     this.fitNow()
   }

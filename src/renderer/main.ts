@@ -253,6 +253,8 @@ async function runAction(action: string): Promise<void> {
     case 'fontBigger': changeFontSize(1); break
     case 'fontSmaller': changeFontSize(-1); break
     case 'fontReset': changeFontSize(null); break
+    case 'clearBuffer': pane?.term.clear(); break
+    case 'resetTerminal': pane?.term.reset(); break
     case 'find': {
       if (pane) findBar.open(pane)
       break

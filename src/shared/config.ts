@@ -17,7 +17,8 @@ export const ACTIONS = [
   'splitRight', 'splitDown',
   'focusLeft', 'focusRight', 'focusUp', 'focusDown',
   'copy', 'paste', 'find',
-  'fontBigger', 'fontSmaller', 'fontReset', 'settings'
+  'fontBigger', 'fontSmaller', 'fontReset',
+  'clearBuffer', 'resetTerminal', 'settings'
 ] as const
 export type Action = (typeof ACTIONS)[number]
 
@@ -41,6 +42,7 @@ export interface Config {
   fontFamily: string
   fontSize: number
   lineHeight: number
+  scrollback: number
   widthPct: number
   heightPct: number
   animationMs: number
@@ -69,6 +71,8 @@ export const DEFAULT_CONFIG: Config = {
     fontBigger: 'Ctrl+=',
     fontSmaller: 'Ctrl+-',
     fontReset: 'Ctrl+0',
+    clearBuffer: 'Ctrl+Shift+K',
+    resetTerminal: 'Ctrl+Shift+R',
     settings: 'Ctrl+Shift+A'
   },
   theme: 'dracula',
@@ -84,6 +88,7 @@ export const DEFAULT_CONFIG: Config = {
   fontFamily: 'Cascadia Mono, Consolas, monospace',
   fontSize: 14,
   lineHeight: 1.2,
+  scrollback: 10000,
   widthPct: 100,
   heightPct: 45,
   animationMs: 150,
@@ -169,6 +174,7 @@ export function mergeConfig(raw: unknown): Config {
     fontFamily: str(r.fontFamily, d.fontFamily),
     fontSize: num(r.fontSize, d.fontSize, 6, 40),
     lineHeight: num(r.lineHeight, d.lineHeight, 1, 2),
+    scrollback: num(r.scrollback, d.scrollback, 100, 200000),
     widthPct: num(r.widthPct, d.widthPct, 20, 100),
     heightPct: num(r.heightPct, d.heightPct, 20, 100),
     animationMs: num(r.animationMs, d.animationMs, 0, 1000),

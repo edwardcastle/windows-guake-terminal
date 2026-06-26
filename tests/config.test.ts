@@ -54,6 +54,12 @@ describe('mergeConfig appearance fields', () => {
     expect(mergeConfig({ cursorStyle: 'fancy' }).cursorStyle).toBe('block')
   })
 
+  test('scrollback defaults and clamps', () => {
+    expect(mergeConfig({}).scrollback).toBe(10000)
+    expect(mergeConfig({ scrollback: 50000 }).scrollback).toBe(50000)
+    expect(mergeConfig({ scrollback: 999999999 }).scrollback).toBe(10000)
+  })
+
   test('numeric appearance fields clamp to range', () => {
     expect(mergeConfig({ fontWeight: 700 }).fontWeight).toBe(700)
     expect(mergeConfig({ fontWeight: 5000 }).fontWeight).toBe(400)
