@@ -32,9 +32,10 @@ export class WindowManager {
     })
   }
 
-  private targetBounds(): { x: number; y: number; width: number; height: number } {
+  private targetBounds(
+    display: Electron.Display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  ): { x: number; y: number; width: number; height: number } {
     const cfg = this.getConfig()
-    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
     const wa = display.workArea
     const width = Math.round((wa.width * cfg.widthPct) / 100)
     const height = Math.round((wa.height * cfg.heightPct) / 100)
@@ -109,6 +110,10 @@ export class WindowManager {
         // pre-Win11 — acrylic unsupported, opacity still applies
       }
     }
-    if (this.win.isVisible() && !this.animating) this.win.setBounds(this.targetBounds())
+    // Live appearance changes keep the window on its current display; only an
+    // explicit show() re-targets the display under the cursor.
+    if (this.win.isVisible() && !this.animating) {
+      this.win.setBounds(this.targetBounds(screen.getDisplayMatching(this.win.getBounds())))
+    }
   }
 }
