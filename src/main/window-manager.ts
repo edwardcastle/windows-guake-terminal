@@ -11,7 +11,6 @@ export class WindowManager {
     // transparent window + CSS opacity in the renderer. Windows/macOS keep the
     // native setOpacity path (see applyAppearance).
     const transparent = process.platform === 'linux'
-    console.log(`[quake-term] creating window: transparent=${transparent}`)
     this.win = new BrowserWindow({
       show: false,
       frame: false,
