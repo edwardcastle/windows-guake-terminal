@@ -232,6 +232,80 @@ export function render(): void {
     )
     if (!findBar.isOpen() && !settings.isOpen() && !palette.isOpen()) panes.get(tab.activePane)?.term.focus()
   }
+  saveSession()
+}
+
+interface SessionNode {
+  type: 'leaf' | 'split'
+  profileId?: string
+  dir?: 'row' | 'col'
+  ratio?: number
+  a?: SessionNode
+  b?: SessionNode
+}
+interface SessionTab { layout: SessionNode; customTitle?: string; customColor?: string }
+interface Session { tabs: SessionTab[]; activeTabIdx: number }
+
+function serializeNode(n: PaneNode): SessionNode {
+  if (n.type === 'leaf') return { type: 'leaf', profileId: panes.get(n.id)?.profileId ?? '' }
+  return { type: 'split', dir: n.dir, ratio: n.ratio, a: serializeNode(n.a), b: serializeNode(n.b) }
+}
+
+function serializeSession(): Session {
+  return {
+    tabs: tabs.map((t) => ({ layout: serializeNode(t.root), customTitle: t.customTitle, customColor: t.customColor })),
+    activeTabIdx
+  }
+}
+
+let sessionTimer: ReturnType<typeof setTimeout> | undefined
+function saveSession(): void {
+  if (!config?.restoreSession) return
+  if (sessionTimer) clearTimeout(sessionTimer)
+  sessionTimer = setTimeout(() => window.api.saveSession(serializeSession()), 300)
+}
+
+function restoreNode(sn: SessionNode): PaneNode {
+  if (sn.type === 'split' && sn.a && sn.b) {
+    return {
+      type: 'split', id: uid('s'),
+      dir: sn.dir === 'col' ? 'col' : 'row',
+      ratio: typeof sn.ratio === 'number' ? sn.ratio : 0.5,
+      a: restoreNode(sn.a), b: restoreNode(sn.b)
+    }
+  }
+  const pid = profiles.find((p) => p.id === sn.profileId)
+    ? (sn.profileId as string)
+    : config.defaultProfileId || profiles[0]?.id || ''
+  return leaf(createPane(pid).id)
+}
+
+function restoreSession(raw: unknown): boolean {
+  const session = raw as Session | null
+  if (!session || !Array.isArray(session.tabs) || !session.tabs.length) return false
+  for (const st of session.tabs) {
+    if (!st || !st.layout) continue
+    const container = document.createElement('div')
+    container.className = 'tab-container'
+    let root: PaneNode
+    try { root = restoreNode(st.layout) } catch { continue }
+    panesEl.appendChild(container)
+    for (const id of leaves(root)) { const p = panes.get(id); if (p) container.appendChild(p.el) }
+    const first = leaves(root)[0]
+    tabs.push({
+      id: uid('t'),
+      title: profileName(panes.get(first)?.profileId ?? ''),
+      customTitle: typeof st.customTitle === 'string' ? st.customTitle : undefined,
+      customColor: typeof st.customColor === 'string' ? st.customColor : undefined,
+      root,
+      activePane: first,
+      container
+    })
+  }
+  if (!tabs.length) return false
+  activeTabIdx = Math.min(Math.max(0, session.activeTabIdx ?? 0), tabs.length - 1)
+  render()
+  return true
 }
 
 async function boot(): Promise<void> {
@@ -251,7 +325,8 @@ async function boot(): Promise<void> {
   })
   window.api.onOpenSettings(() => settings.open())
   new ResizeObserver(() => render()).observe(panesEl)
-  newTab()
+  const restored = config.restoreSession && restoreSession(await window.api.loadSession())
+  if (!restored) newTab()
 }
 
 void boot()

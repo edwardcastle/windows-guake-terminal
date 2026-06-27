@@ -492,6 +492,7 @@ export class SettingsUI {
       { value: 'primary', text: 'Primary' }
     ], cfg.dropdownMonitor, (v) => this.patch({ dropdownMonitor: v as Config['dropdownMonitor'] }))
     this.sectionTitle('Behavior')
+    this.checkField('Restore tabs on launch', cfg.restoreSession, (v) => this.patch({ restoreSession: v }))
     this.checkField('Hide on focus loss', cfg.hideOnBlur, (v) => this.patch({ hideOnBlur: v }))
     this.checkField('Start with Windows', cfg.startWithWindows, (v) => this.patch({ startWithWindows: v }))
     this.textField('Toggle hotkey', cfg.hotkey, (v) => this.patch({ hotkey: v }))

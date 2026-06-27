@@ -20,7 +20,9 @@ const api = {
   hideWindow: () => ipcRenderer.send('window:hide'),
   platform: process.platform,
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
-  loadImage: (path: string) => ipcRenderer.invoke('image:load', path) as Promise<string | null>
+  loadImage: (path: string) => ipcRenderer.invoke('image:load', path) as Promise<string | null>,
+  loadSession: () => ipcRenderer.invoke('session:load') as Promise<unknown>,
+  saveSession: (data: unknown) => ipcRenderer.send('session:save', data)
 }
 
 contextBridge.exposeInMainWorld('api', api)

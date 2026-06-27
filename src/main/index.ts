@@ -26,7 +26,9 @@ const realSpawn: SpawnFn = (exe, args, opts) =>
     env: opts.env as { [k: string]: string }
   })
 
-const store = new ConfigStore(path.join(app.getPath('appData'), 'quake-term'))
+const appDir = path.join(app.getPath('appData'), 'quake-term')
+const store = new ConfigStore(appDir)
+const sessionFile = path.join(appDir, 'session.json')
 const ptys = new PtyManager(realSpawn)
 let wm: WindowManager
 let tray: Tray
@@ -82,6 +84,22 @@ function registerIpc(): void {
     return c
   })
   ipcMain.on('window:hide', () => wm.hide())
+  ipcMain.handle('session:load', () => {
+    try {
+      return JSON.parse(fs.readFileSync(sessionFile, 'utf8'))
+    } catch {
+      return null
+    }
+  })
+  ipcMain.on('session:save', (_e, data: unknown) => {
+    try {
+      const tmp = sessionFile + '.tmp'
+      fs.writeFileSync(tmp, JSON.stringify(data))
+      fs.renameSync(tmp, sessionFile)
+    } catch {
+      // ignore session write failures
+    }
+  })
   ipcMain.handle('image:load', (_e, p: string) => {
     try {
       const ext = (path.extname(p).slice(1) || 'png').toLowerCase()

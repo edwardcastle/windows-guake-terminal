@@ -53,6 +53,7 @@ export interface Config {
   animationMs: number
   hideOnBlur: boolean
   startWithWindows: boolean
+  restoreSession: boolean
   dropdownEdge: DropdownEdge
   dropdownMonitor: DropdownMonitor
 }
@@ -106,6 +107,7 @@ export const DEFAULT_CONFIG: Config = {
   animationMs: 150,
   hideOnBlur: true,
   startWithWindows: true,
+  restoreSession: true,
   dropdownEdge: 'top',
   dropdownMonitor: 'cursor'
 }
@@ -197,6 +199,7 @@ export function mergeConfig(raw: unknown): Config {
     animationMs: num(r.animationMs, d.animationMs, 0, 1000),
     hideOnBlur: bool(r.hideOnBlur, d.hideOnBlur),
     startWithWindows: bool(r.startWithWindows, d.startWithWindows),
+    restoreSession: bool(r.restoreSession, d.restoreSession),
     dropdownEdge: oneOf(r.dropdownEdge, ['top', 'bottom'] as const, d.dropdownEdge),
     dropdownMonitor: oneOf(r.dropdownMonitor, ['cursor', 'primary'] as const, d.dropdownMonitor)
   }
