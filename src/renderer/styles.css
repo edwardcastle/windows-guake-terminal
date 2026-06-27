@@ -304,6 +304,11 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 .swatch input[type='color']:disabled { cursor: default; opacity: 0.6; }
 .swatch label { flex: 1; font-size: 12px; color: var(--ui-muted); }
 
+.keybind-control { display: flex; align-items: center; gap: 8px; }
+.keybind-btn { flex: 1; text-align: left; font-variant-numeric: tabular-nums; }
+.keybind-btn.capturing { border-color: var(--ui-accent); color: var(--ui-accent); }
+.keybind-warn { flex: none; color: #e0af68; font-size: 11px; }
+
 .settings-content::-webkit-scrollbar { width: 10px; }
 .settings-content::-webkit-scrollbar-thumb { background: var(--ui-border); border-radius: 6px; }
 .settings-content::-webkit-scrollbar-track { background: transparent; }

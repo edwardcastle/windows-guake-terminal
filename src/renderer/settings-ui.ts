@@ -24,6 +24,20 @@ function fullHex(v: string): string {
   return isHexColor(v) ? toHex(parseHex(v)) : '#000000'
 }
 
+// Build an Electron-accelerator string (e.g. "Ctrl+Shift+D") from a keydown,
+// compatible with keys.ts parseCombo. Returns null while only modifiers are held.
+function formatAccelerator(e: KeyboardEvent): string | null {
+  if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return null
+  const mods: string[] = []
+  if (e.ctrlKey) mods.push('Ctrl')
+  if (e.altKey) mods.push('Alt')
+  if (e.shiftKey) mods.push('Shift')
+  let key = e.key
+  if (key === ' ') key = 'Space'
+  else if (key.length === 1) key = key.toUpperCase()
+  return [...mods, key].join('+')
+}
+
 function makeButton(text: string, onClick: () => void): HTMLButtonElement {
   const b = document.createElement('button')
   b.type = 'button'
@@ -442,10 +456,40 @@ export class SettingsUI {
   }
 
   private renderKeybindings(cfg: Config): void {
-    this.sectionTitle('Shortcuts (Electron accelerator strings)')
+    this.sectionTitle('Shortcuts — click a binding, then press the keys')
     for (const action of ACTIONS) {
-      this.textField(action, cfg.keybindings[action], (v) =>
-        this.patch({ keybindings: { ...cfg.keybindings, [action]: v } }))
+      const ctl = document.createElement('div')
+      ctl.className = 'keybind-control'
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'btn keybind-btn'
+      btn.textContent = cfg.keybindings[action] || '(unset)'
+      const warn = document.createElement('span')
+      warn.className = 'keybind-warn'
+      const dup = ACTIONS.find((a) => a !== action && cfg.keybindings[a] === cfg.keybindings[action])
+      if (dup) warn.textContent = `⚠ also ${dup}`
+      btn.addEventListener('click', () => {
+        btn.textContent = 'Press keys… (Esc to cancel)'
+        btn.classList.add('capturing')
+        const cleanup = (): void => window.removeEventListener('keydown', onKey, true)
+        const onKey = (e: KeyboardEvent): void => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (e.key === 'Escape') {
+            cleanup()
+            btn.classList.remove('capturing')
+            btn.textContent = cfg.keybindings[action] || '(unset)'
+            return
+          }
+          const accel = formatAccelerator(e)
+          if (!accel) return
+          cleanup()
+          this.patch({ keybindings: { ...this.getConfig().keybindings, [action]: accel } })
+        }
+        window.addEventListener('keydown', onKey, true)
+      })
+      ctl.append(btn, warn)
+      this.fieldRow(action, ctl)
     }
   }
 }
