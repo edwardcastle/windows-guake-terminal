@@ -38,6 +38,7 @@
       "owner": "edwardcastle",
       "repo": "windows-guake-terminal"
     },
+    "artifactName": "${productName}-Setup-${version}.${ext}",
     "files": [
       "out/**"
     ],
