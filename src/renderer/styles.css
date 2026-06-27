@@ -273,6 +273,17 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 }
 .theme-sample-ansi { letter-spacing: 1px; margin-top: 2px; }
 
+.font-field { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.font-specimen {
+  padding: 6px 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--term-bg);
+  color: var(--ui-fg);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
 .editor-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .btn {
   background: var(--term-bg);

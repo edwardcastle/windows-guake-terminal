@@ -401,9 +401,60 @@ export class SettingsUI {
     return box
   }
 
+  private fontField(cfg: Config): void {
+    const curated = [
+      'Cascadia Mono', 'Cascadia Code', 'Consolas', 'Fira Code', 'JetBrains Mono',
+      'Source Code Pro', 'Hack', 'Menlo', 'Monaco', 'Ubuntu Mono',
+      'DejaVu Sans Mono', 'Roboto Mono', 'IBM Plex Mono', 'Courier New'
+    ]
+    const wrap = document.createElement('div')
+    wrap.className = 'font-field'
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.value = cfg.fontFamily
+    input.setAttribute('list', 'qt-font-list')
+    const dl = document.createElement('datalist')
+    dl.id = 'qt-font-list'
+    for (const f of curated) {
+      const o = document.createElement('option')
+      o.value = f
+      dl.appendChild(o)
+    }
+    const specimen = document.createElement('div')
+    specimen.className = 'font-specimen'
+    specimen.textContent = 'The quick brown fox  0123  => != -> =='
+    const paint = (): void => {
+      specimen.style.fontFamily = input.value
+      specimen.style.fontSize = `${cfg.fontSize}px`
+      specimen.style.fontWeight = String(cfg.fontWeight)
+    }
+    paint()
+    input.addEventListener('input', paint)
+    input.addEventListener('change', () => this.patch({ fontFamily: input.value }))
+    // Upgrade the suggestions to the system's installed fonts if the browser
+    // grants the Local Font Access permission; otherwise keep the curated list.
+    input.addEventListener('focus', () => {
+      const q = (window as unknown as { queryLocalFonts?: () => Promise<{ family: string }[]> }).queryLocalFonts
+      if (!q || dl.dataset.loaded) return
+      dl.dataset.loaded = '1'
+      q().then((fonts) => {
+        const families = [...new Set(fonts.map((f) => f.family))].sort()
+        if (!families.length) return
+        dl.textContent = ''
+        for (const f of families) {
+          const o = document.createElement('option')
+          o.value = f
+          dl.appendChild(o)
+        }
+      }).catch(() => { /* unsupported or denied — keep curated list */ })
+    })
+    wrap.append(input, dl, specimen)
+    this.fieldRow('Family', wrap)
+  }
+
   private renderTerminal(cfg: Config): void {
     this.sectionTitle('Font')
-    this.textField('Family', cfg.fontFamily, (v) => this.patch({ fontFamily: v }))
+    this.fontField(cfg)
     this.sliderField('Size', cfg.fontSize, 6, 40, 1, (v) => `${v}px`, (v) => this.patch({ fontSize: v }))
     this.sliderField('Line height', cfg.lineHeight, 1, 2, 0.05, (v) => v.toFixed(2), (v) => this.patch({ lineHeight: v }))
     this.sliderField('Weight', cfg.fontWeight, 100, 900, 100, (v) => String(v), (v) => this.patch({ fontWeight: v }))
