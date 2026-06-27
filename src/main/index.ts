@@ -1,4 +1,4 @@
-import { app, globalShortcut, ipcMain, Menu, nativeImage, Tray } from 'electron'
+import { app, dialog, globalShortcut, ipcMain, Menu, nativeImage, Tray } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import * as nodePty from 'node-pty'
@@ -61,16 +61,49 @@ function applyMainConfig(): void {
   }
 }
 
+let manualCheck = false
+
+function notify(message: string, detail?: string): void {
+  void dialog.showMessageBox({ type: 'info', title: 'quake-term', message, detail, buttons: ['OK'] })
+}
+
+function checkForUpdates(manual: boolean): void {
+  if (!app.isPackaged) {
+    if (manual) notify('Updates are only available in the installed app.')
+    return
+  }
+  manualCheck = manual
+  autoUpdater.checkForUpdates().catch(() => { /* the 'error' event reports it */ })
+}
+
 function setupAutoUpdate(): void {
   if (!app.isPackaged) return
-  autoUpdater.on('error', () => { /* offline or no published release — ignore */ })
-  autoUpdater.on('update-downloaded', () => {
-    tray?.displayBalloon({
-      title: 'quake-term',
-      content: 'An update was downloaded and will install when you quit.'
+  autoUpdater.on('update-available', () => {
+    if (manualCheck) notify('Update available', 'Downloading in the background…')
+  })
+  autoUpdater.on('update-not-available', () => {
+    if (manualCheck) notify("You're up to date.")
+    manualCheck = false
+  })
+  autoUpdater.on('error', (err) => {
+    if (manualCheck) notify('Update check failed', String((err && err.message) || err))
+    manualCheck = false
+  })
+  autoUpdater.on('update-downloaded', (info) => {
+    manualCheck = false
+    void dialog.showMessageBox({
+      type: 'info', title: 'quake-term',
+      message: `Update ${info && info.version ? 'v' + info.version + ' ' : ''}ready to install`,
+      detail: 'Quit and install now, or it will install the next time you quit.',
+      buttons: ['Quit and install', 'Later'], defaultId: 0
+    }).then((r) => {
+      if (r.response === 0) {
+        quitting = true
+        autoUpdater.quitAndInstall()
+      }
     })
   })
-  autoUpdater.checkForUpdatesAndNotify().catch(() => { /* no published release / offline */ })
+  checkForUpdates(false)
 }
 
 function registerIpc(): void {
@@ -164,13 +197,7 @@ app.whenReady().then(() => {
         wm.win.webContents.send('ui:open-settings')
       }
     },
-    {
-      label: 'Check for updates',
-      click: () => {
-        if (app.isPackaged) void autoUpdater.checkForUpdates()
-        else tray.displayBalloon({ title: 'quake-term', content: 'Updates are available only in the installed app.' })
-      }
-    },
+    { label: 'Check for updates', click: () => checkForUpdates(true) },
     { type: 'separator' },
     {
       label: 'Quit',
