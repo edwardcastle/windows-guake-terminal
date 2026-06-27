@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 const api = {
   spawn: (paneId: string, profileId: string, cols: number, rows: number, cwd?: string) =>
@@ -18,7 +18,8 @@ const api = {
   getProfiles: () => ipcRenderer.invoke('profiles:get'),
   onOpenSettings: (cb: () => void) => ipcRenderer.on('ui:open-settings', () => cb()),
   hideWindow: () => ipcRenderer.send('window:hide'),
-  platform: process.platform
+  platform: process.platform,
+  getPathForFile: (file: File) => webUtils.getPathForFile(file)
 }
 
 contextBridge.exposeInMainWorld('api', api)

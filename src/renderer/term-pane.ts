@@ -6,6 +6,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { Config, Profile } from '../shared/config'
 import { resolveAppearance, resolveTheme } from '../shared/theme'
+import { relativePath } from '../shared/path-util'
 import { openContextMenu } from './context-menu'
 
 export class TermPane {
@@ -80,6 +81,22 @@ export class TermPane {
         { label: 'Select all', onClick: () => this.term.selectAll() },
         { label: 'Clear', onClick: () => this.term.clear() }
       ])
+    })
+    // Drag files in: insert each path (relative to the pane's cwd when known),
+    // quoted if it contains spaces.
+    this.el.addEventListener('dragover', (e) => e.preventDefault())
+    this.el.addEventListener('drop', (e) => {
+      e.preventDefault()
+      const files = e.dataTransfer?.files
+      if (!files || !files.length || this.exited) return
+      const paths = Array.from(files)
+        .map((f) => window.api.getPathForFile(f))
+        .filter(Boolean)
+        .map((abs) => {
+          const rel = this.cwd ? relativePath(this.cwd, abs) : abs
+          return /\s/.test(rel) ? `"${rel}"` : rel
+        })
+      if (paths.length) this.term.paste(paths.join(' '))
     })
   }
 
