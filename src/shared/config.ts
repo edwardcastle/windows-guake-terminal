@@ -39,6 +39,9 @@ export interface Config {
   fontWeight: number
   letterSpacing: number
   padding: number
+  backgroundImage: string
+  backgroundBlur: number
+  backgroundDim: number
   opacity: number
   acrylic: boolean
   fontFamily: string
@@ -89,6 +92,9 @@ export const DEFAULT_CONFIG: Config = {
   fontWeight: 400,
   letterSpacing: 0,
   padding: 6,
+  backgroundImage: '',
+  backgroundBlur: 0,
+  backgroundDim: 0.4,
   opacity: 0.9,
   acrylic: false,
   fontFamily: 'Cascadia Mono, Consolas, monospace',
@@ -177,6 +183,9 @@ export function mergeConfig(raw: unknown): Config {
     fontWeight: num(r.fontWeight, d.fontWeight, 100, 900),
     letterSpacing: num(r.letterSpacing, d.letterSpacing, -2, 4),
     padding: num(r.padding, d.padding, 0, 24),
+    backgroundImage: typeof r.backgroundImage === 'string' ? r.backgroundImage : d.backgroundImage,
+    backgroundBlur: num(r.backgroundBlur, d.backgroundBlur, 0, 40),
+    backgroundDim: num(r.backgroundDim, d.backgroundDim, 0, 0.9),
     opacity: num(r.opacity, d.opacity, 0.3, 1),
     acrylic: bool(r.acrylic, d.acrylic),
     fontFamily: str(r.fontFamily, d.fontFamily),

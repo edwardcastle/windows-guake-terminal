@@ -91,7 +91,15 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 
 /* ---- panes ---- */
 #panes { position: relative; flex: 1; }
-.tab-container { position: absolute; inset: 0; }
+#bg-layer {
+  position: absolute;
+  inset: -24px; /* bleed so blur doesn't reveal the edges */
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+}
+.tab-container { position: absolute; inset: 0; z-index: 1; }
 .tab-container.hidden { display: none; }
 .pane { position: absolute; padding: var(--term-padding); overflow: hidden; }
 .pane.active-pane { outline: 1px solid var(--ui-accent); outline-offset: -1px; }

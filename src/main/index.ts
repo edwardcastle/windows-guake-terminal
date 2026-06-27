@@ -82,6 +82,15 @@ function registerIpc(): void {
     return c
   })
   ipcMain.on('window:hide', () => wm.hide())
+  ipcMain.handle('image:load', (_e, p: string) => {
+    try {
+      const ext = (path.extname(p).slice(1) || 'png').toLowerCase()
+      const mime = ext === 'svg' ? 'svg+xml' : ext === 'jpg' ? 'jpeg' : ext
+      return `data:image/${mime};base64,${fs.readFileSync(p).toString('base64')}`
+    } catch {
+      return null
+    }
+  })
 }
 
 app.whenReady().then(() => {

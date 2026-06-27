@@ -74,6 +74,42 @@ function applyAppearance(cfg: Config): void {
   s.setProperty('--ui-muted', pal.uiMuted)
   s.setProperty('--term-padding', `${cfg.padding}px`)
   s.setProperty('--win-opacity', String(cfg.opacity))
+  applyBackground(cfg)
+}
+
+let bgLayer: HTMLDivElement | undefined
+let bgLoadedPath = ''
+let bgDataUrl = ''
+
+function applyBackground(cfg: Config): void {
+  if (!bgLayer) {
+    bgLayer = document.createElement('div')
+    bgLayer.id = 'bg-layer'
+    panesEl.prepend(bgLayer)
+  }
+  const layer = bgLayer
+  if (!cfg.backgroundImage) {
+    layer.style.display = 'none'
+    bgLoadedPath = ''
+    bgDataUrl = ''
+    return
+  }
+  const paint = (dataUrl: string): void => {
+    layer.style.display = ''
+    layer.style.backgroundImage =
+      `linear-gradient(rgba(0,0,0,${cfg.backgroundDim}), rgba(0,0,0,${cfg.backgroundDim})), url("${dataUrl}")`
+    layer.style.filter = `blur(${cfg.backgroundBlur}px)`
+  }
+  if (cfg.backgroundImage === bgLoadedPath && bgDataUrl) {
+    paint(bgDataUrl) // image cached; dim/blur may have changed
+    return
+  }
+  void window.api.loadImage(cfg.backgroundImage).then((url) => {
+    if (!url) { layer.style.display = 'none'; return }
+    bgLoadedPath = cfg.backgroundImage
+    bgDataUrl = url
+    paint(url)
+  })
 }
 
 function activeTab(): Tab | undefined { return tabs[activeTabIdx] }

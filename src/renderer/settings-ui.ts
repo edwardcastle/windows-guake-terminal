@@ -255,6 +255,13 @@ export class SettingsUI {
       this.colorField('Accent color', cfg.accent, (v) => this.patch({ accent: v }))
     }
 
+    this.sectionTitle('Background image')
+    this.textField('Image path', cfg.backgroundImage, (v) => this.patch({ backgroundImage: v.trim() }))
+    if (cfg.backgroundImage) {
+      this.sliderField('Dim', cfg.backgroundDim, 0, 0.9, 0.05, (v) => `${Math.round(v * 100)}%`, (v) => this.patch({ backgroundDim: v }))
+      this.sliderField('Blur', cfg.backgroundBlur, 0, 40, 1, (v) => `${v}px`, (v) => this.patch({ backgroundBlur: v }))
+    }
+
     this.sectionTitle('Cursor')
     this.selectField('Style', [
       { value: 'block', text: 'Block' },

@@ -19,7 +19,8 @@ const api = {
   onOpenSettings: (cb: () => void) => ipcRenderer.on('ui:open-settings', () => cb()),
   hideWindow: () => ipcRenderer.send('window:hide'),
   platform: process.platform,
-  getPathForFile: (file: File) => webUtils.getPathForFile(file)
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
+  loadImage: (path: string) => ipcRenderer.invoke('image:load', path) as Promise<string | null>
 }
 
 contextBridge.exposeInMainWorld('api', api)

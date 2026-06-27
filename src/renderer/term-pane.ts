@@ -5,9 +5,16 @@ import { SearchAddon } from '@xterm/addon-search'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { Config, Profile } from '../shared/config'
+import type { TerminalTheme } from '../shared/theme'
 import { resolveAppearance, resolveTheme } from '../shared/theme'
 import { relativePath } from '../shared/path-util'
 import { openContextMenu } from './context-menu'
+
+// When a background image is set the terminal background must be see-through.
+function termTheme(cfg: Config, themeName: string): TerminalTheme {
+  const t = resolveTheme(themeName, cfg.customThemes)
+  return cfg.backgroundImage ? { ...t, background: 'rgba(0,0,0,0)' } : t
+}
 
 export class TermPane {
   readonly el = document.createElement('div')
@@ -29,6 +36,7 @@ export class TermPane {
     const app = resolveAppearance(cfg, profile)
     this.term = new Terminal({
       allowProposedApi: true,
+      allowTransparency: true,
       cursorBlink: cfg.cursorBlink,
       cursorStyle: cfg.cursorStyle,
       fontWeight: cfg.fontWeight as FontWeight,
@@ -37,7 +45,7 @@ export class TermPane {
       fontFamily: app.fontFamily,
       fontSize: app.fontSize,
       lineHeight: cfg.lineHeight,
-      theme: resolveTheme(app.theme, cfg.customThemes)
+      theme: termTheme(cfg, app.theme)
     })
     this.term.loadAddon(this.fit)
     this.term.loadAddon(this.search)
@@ -146,7 +154,7 @@ export class TermPane {
     o.cursorStyle = cfg.cursorStyle
     o.cursorBlink = cfg.cursorBlink
     o.scrollback = cfg.scrollback
-    o.theme = resolveTheme(app.theme, cfg.customThemes)
+    o.theme = termTheme(cfg, app.theme)
     this.fitNow()
   }
 
