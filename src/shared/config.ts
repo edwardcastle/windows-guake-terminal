@@ -23,6 +23,8 @@ export const ACTIONS = [
 export type Action = (typeof ACTIONS)[number]
 
 export type CursorStyle = 'block' | 'bar' | 'underline'
+export type DropdownEdge = 'top' | 'bottom'
+export type DropdownMonitor = 'cursor' | 'primary'
 
 export interface Config {
   hotkey: string
@@ -48,6 +50,8 @@ export interface Config {
   animationMs: number
   hideOnBlur: boolean
   startWithWindows: boolean
+  dropdownEdge: DropdownEdge
+  dropdownMonitor: DropdownMonitor
 }
 
 export const DEFAULT_CONFIG: Config = {
@@ -94,7 +98,9 @@ export const DEFAULT_CONFIG: Config = {
   heightPct: 45,
   animationMs: 150,
   hideOnBlur: true,
-  startWithWindows: true
+  startWithWindows: true,
+  dropdownEdge: 'top',
+  dropdownMonitor: 'cursor'
 }
 
 export function isProfile(v: unknown): v is Profile {
@@ -180,6 +186,8 @@ export function mergeConfig(raw: unknown): Config {
     heightPct: num(r.heightPct, d.heightPct, 20, 100),
     animationMs: num(r.animationMs, d.animationMs, 0, 1000),
     hideOnBlur: bool(r.hideOnBlur, d.hideOnBlur),
-    startWithWindows: bool(r.startWithWindows, d.startWithWindows)
+    startWithWindows: bool(r.startWithWindows, d.startWithWindows),
+    dropdownEdge: oneOf(r.dropdownEdge, ['top', 'bottom'] as const, d.dropdownEdge),
+    dropdownMonitor: oneOf(r.dropdownMonitor, ['cursor', 'primary'] as const, d.dropdownMonitor)
   }
 }

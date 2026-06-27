@@ -39,7 +39,21 @@ export class WindowManager {
     const wa = display.workArea
     const width = Math.round((wa.width * cfg.widthPct) / 100)
     const height = Math.round((wa.height * cfg.heightPct) / 100)
-    return { x: wa.x + Math.round((wa.width - width) / 2), y: wa.y, width, height }
+    const x = wa.x + Math.round((wa.width - width) / 2)
+    const y = cfg.dropdownEdge === 'bottom' ? wa.y + wa.height - height : wa.y
+    return { x, y, width, height }
+  }
+
+  private showDisplay(): Electron.Display {
+    return this.getConfig().dropdownMonitor === 'primary'
+      ? screen.getPrimaryDisplay()
+      : screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  }
+
+  // Off-screen parked Y for the slide animation: above the work area for a
+  // top-edge dropdown, below it for a bottom-edge one.
+  private offscreenY(b: { y: number; height: number }): number {
+    return this.getConfig().dropdownEdge === 'bottom' ? b.y + b.height : b.y - b.height
   }
 
   toggle(): void {
@@ -54,16 +68,17 @@ export class WindowManager {
       this.win.focus()
       return
     }
-    const b = this.targetBounds()
+    const b = this.targetBounds(this.showDisplay())
     const ms = this.getConfig().animationMs
     if (ms === 0) {
       this.win.setBounds(b)
       this.win.show()
       return
     }
-    this.win.setBounds({ ...b, y: b.y - b.height })
+    const start = this.offscreenY(b)
+    this.win.setBounds({ ...b, y: start })
     this.win.show()
-    this.animate(b.y - b.height, b.y, ms, (y) => this.win.setBounds({ ...b, y }))
+    this.animate(start, b.y, ms, (y) => this.win.setBounds({ ...b, y }))
   }
 
   hide(): void {
@@ -74,7 +89,7 @@ export class WindowManager {
       this.win.hide()
       return
     }
-    this.animate(b.y, b.y - b.height, ms, (y) => this.win.setBounds({ ...b, y }), () =>
+    this.animate(b.y, this.offscreenY(b), ms, (y) => this.win.setBounds({ ...b, y }), () =>
       this.win.hide()
     )
   }

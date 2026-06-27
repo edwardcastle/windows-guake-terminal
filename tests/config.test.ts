@@ -54,6 +54,15 @@ describe('mergeConfig appearance fields', () => {
     expect(mergeConfig({ cursorStyle: 'fancy' }).cursorStyle).toBe('block')
   })
 
+  test('dropdown edge/monitor accept the enum, else fall back', () => {
+    expect(mergeConfig({}).dropdownEdge).toBe('top')
+    expect(mergeConfig({}).dropdownMonitor).toBe('cursor')
+    expect(mergeConfig({ dropdownEdge: 'bottom' }).dropdownEdge).toBe('bottom')
+    expect(mergeConfig({ dropdownEdge: 'sideways' }).dropdownEdge).toBe('top')
+    expect(mergeConfig({ dropdownMonitor: 'primary' }).dropdownMonitor).toBe('primary')
+    expect(mergeConfig({ dropdownMonitor: 'nope' }).dropdownMonitor).toBe('cursor')
+  })
+
   test('scrollback defaults and clamps', () => {
     expect(mergeConfig({}).scrollback).toBe(10000)
     expect(mergeConfig({ scrollback: 50000 }).scrollback).toBe(50000)

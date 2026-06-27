@@ -421,6 +421,15 @@ export class SettingsUI {
     this.sliderField('Width', cfg.widthPct, 20, 100, 5, (v) => `${v}%`, (v) => this.patch({ widthPct: v }))
     this.sliderField('Height', cfg.heightPct, 20, 100, 5, (v) => `${v}%`, (v) => this.patch({ heightPct: v }))
     this.sliderField('Animation', cfg.animationMs, 0, 1000, 25, (v) => `${v}ms`, (v) => this.patch({ animationMs: v }))
+    this.sectionTitle('Dropdown')
+    this.selectField('Edge', [
+      { value: 'top', text: 'Top' },
+      { value: 'bottom', text: 'Bottom' }
+    ], cfg.dropdownEdge, (v) => this.patch({ dropdownEdge: v as Config['dropdownEdge'] }))
+    this.selectField('Monitor', [
+      { value: 'cursor', text: "Cursor's screen" },
+      { value: 'primary', text: 'Primary' }
+    ], cfg.dropdownMonitor, (v) => this.patch({ dropdownMonitor: v as Config['dropdownMonitor'] }))
     this.sectionTitle('Behavior')
     this.checkField('Hide on focus loss', cfg.hideOnBlur, (v) => this.patch({ hideOnBlur: v }))
     this.checkField('Start with Windows', cfg.startWithWindows, (v) => this.patch({ startWithWindows: v }))
