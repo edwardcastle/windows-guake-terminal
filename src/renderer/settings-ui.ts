@@ -3,7 +3,7 @@ import { ACTIONS } from '../shared/config'
 import type { TerminalTheme } from '../shared/theme'
 import {
   BUILTIN_THEMES, THEME_COLOR_KEYS,
-  isTerminalTheme, isHexColor, parseHex, toHex, resolveTheme
+  isHexColor, parseHex, toHex, resolveTheme, adaptTheme
 } from '../shared/theme'
 
 type Patch = (patch: Partial<Config>) => void
@@ -303,16 +303,19 @@ export class SettingsUI {
     this.content.appendChild(actions)
 
     const ta = document.createElement('textarea')
-    ta.placeholder = 'Paste a complete theme JSON object…'
+    ta.placeholder = 'Paste a quake-term or Windows Terminal theme JSON…'
     const err = document.createElement('div')
     err.className = 'editor-error'
     importArea.append(ta, makeButton('Import as custom theme', () => {
       err.textContent = ''
       let parsed: unknown
       try { parsed = JSON.parse(ta.value) } catch { err.textContent = 'Invalid JSON'; return }
-      if (!isTerminalTheme(parsed)) { err.textContent = 'Not a complete theme (missing colors)'; return }
-      const newName = this.uniqueThemeName(cfg, 'imported')
-      this.patch({ customThemes: { ...cfg.customThemes, [newName]: parsed }, theme: newName })
+      const theme = adaptTheme(parsed)
+      if (!theme) { err.textContent = 'Not a recognized theme (quake-term or Windows Terminal JSON)'; return }
+      const rawName = (parsed as { name?: unknown }).name
+      const base = typeof rawName === 'string' && rawName ? rawName : 'imported'
+      const newName = this.uniqueThemeName(cfg, base)
+      this.patch({ customThemes: { ...cfg.customThemes, [newName]: theme }, theme: newName })
     }), err)
     this.content.appendChild(importArea)
 
