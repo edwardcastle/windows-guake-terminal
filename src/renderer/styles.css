@@ -355,6 +355,47 @@ html.transparent-window #app { opacity: var(--win-opacity); }
   min-width: 60px;
 }
 
+#command-palette {
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  background: rgba(0, 0, 0, 0.35);
+}
+.cmd-box {
+  width: 520px;
+  max-width: calc(100% - 32px);
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.cmd-input {
+  width: 100%;
+  background: var(--term-bg);
+  border: none;
+  border-bottom: 1px solid var(--ui-border);
+  color: var(--ui-fg);
+  padding: 11px 14px;
+  outline: none;
+  font: inherit;
+  font-size: 14px;
+}
+.cmd-list { max-height: 320px; overflow-y: auto; }
+.cmd-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 14px;
+  cursor: pointer;
+  color: var(--ui-fg);
+}
+.cmd-row.sel { background: var(--ui-accent); color: var(--ui-bg); }
+.cmd-hint { color: var(--ui-muted); font-variant-numeric: tabular-nums; }
+.cmd-row.sel .cmd-hint { color: var(--ui-bg); opacity: 0.8; }
+
 #context-menu {
   position: absolute;
   z-index: 60;

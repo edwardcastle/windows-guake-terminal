@@ -8,7 +8,10 @@ import { TermPane } from './term-pane'
 import { renderTabBar } from './tab-bar'
 import { FindBar } from './find-bar'
 import { SettingsUI } from './settings-ui'
-import { uiPalette, resolveTheme } from '../shared/theme'
+import { CommandPalette } from './command-palette'
+import type { Command } from './command-palette'
+import { uiPalette, resolveTheme, BUILTIN_THEMES } from '../shared/theme'
+import { ACTIONS } from '../shared/config'
 import { displayTitle, displayColor } from '../shared/tab-label'
 
 interface Tab {
@@ -40,6 +43,25 @@ const settings = new SettingsUI(
   (patch) => void window.api.setConfig(patch),
   () => activePane()?.term.focus()
 )
+const palette = new CommandPalette(document.body, buildCommands, () => activePane()?.term.focus())
+
+function humanize(s: string): string {
+  return s.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
+}
+
+function buildCommands(): Command[] {
+  const cmds: Command[] = []
+  for (const action of ACTIONS) {
+    cmds.push({ id: `action:${action}`, label: humanize(action), hint: config.keybindings[action], run: () => void runAction(action) })
+  }
+  for (const p of profiles) {
+    cmds.push({ id: `newtab:${p.id}`, label: `New tab: ${p.name}`, run: () => newTab(p.id) })
+  }
+  for (const name of [...Object.keys(BUILTIN_THEMES), ...Object.keys(config.customThemes)]) {
+    cmds.push({ id: `theme:${name}`, label: `Theme: ${name}`, run: () => void window.api.setConfig({ theme: name }) })
+  }
+  return cmds
+}
 
 function applyAppearance(cfg: Config): void {
   const pal = uiPalette(resolveTheme(cfg.theme, cfg.customThemes), cfg.accent)
@@ -172,7 +194,7 @@ export function render(): void {
       },
       focusPane
     )
-    if (!findBar.isOpen() && !settings.isOpen()) panes.get(tab.activePane)?.term.focus()
+    if (!findBar.isOpen() && !settings.isOpen() && !palette.isOpen()) panes.get(tab.activePane)?.term.focus()
   }
 }
 
@@ -275,6 +297,7 @@ async function runAction(action: string): Promise<void> {
     case 'fontReset': changeFontSize(null); break
     case 'clearBuffer': pane?.term.clear(); break
     case 'resetTerminal': pane?.term.reset(); break
+    case 'commandPalette': palette.toggle(); break
     case 'find': {
       if (pane) findBar.open(pane)
       break
@@ -288,7 +311,7 @@ window.addEventListener(
   (e) => {
     if (!config) return
     const ae = document.activeElement as HTMLElement | null
-    if (ae && ae.closest && ae.closest('#settings, #findbar')) return
+    if (ae && ae.closest && ae.closest('#settings, #findbar, #command-palette')) return
     const action = matchAction(config.keybindings, e)
     if (action) {
       e.preventDefault()

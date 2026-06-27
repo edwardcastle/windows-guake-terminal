@@ -18,7 +18,7 @@ export const ACTIONS = [
   'focusLeft', 'focusRight', 'focusUp', 'focusDown',
   'copy', 'paste', 'find',
   'fontBigger', 'fontSmaller', 'fontReset',
-  'clearBuffer', 'resetTerminal', 'settings'
+  'clearBuffer', 'resetTerminal', 'commandPalette', 'settings'
 ] as const
 export type Action = (typeof ACTIONS)[number]
 
@@ -78,6 +78,7 @@ export const DEFAULT_CONFIG: Config = {
     fontReset: 'Ctrl+0',
     clearBuffer: 'Ctrl+Shift+K',
     resetTerminal: 'Ctrl+Shift+R',
+    commandPalette: 'Ctrl+Shift+P',
     settings: 'Ctrl+Shift+A'
   },
   theme: 'dracula',
