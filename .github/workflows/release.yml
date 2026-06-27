@@ -1,0 +1,32 @@
+name: Release
+
+# Build the Windows installer and publish it to a GitHub Release whenever a
+# version tag like v0.1.1 is pushed. electron-updater on the installed app then
+# picks the new release up automatically.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build and publish
+        run: npm run release
+        env:
+          # Provided automatically by GitHub Actions; needs the contents:write
+          # permission above to create the release and upload assets.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Windows code signing (optional): add these repo secrets to sign the
+          # installer and avoid SmartScreen warnings.
+          # WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          # WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}

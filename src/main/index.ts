@@ -2,6 +2,7 @@ import { app, globalShortcut, ipcMain, Menu, nativeImage, Tray } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import * as nodePty from 'node-pty'
+import { autoUpdater } from 'electron-updater'
 import { ConfigStore } from './config-store'
 import { detectProfiles } from './profiles'
 import { PtyManager, SpawnFn } from './pty-manager'
@@ -53,6 +54,18 @@ function applyMainConfig(): void {
   if (app.isPackaged) {
     app.setLoginItemSettings({ openAtLogin: cfg.startWithWindows, args: ['--hidden'] })
   }
+}
+
+function setupAutoUpdate(): void {
+  if (!app.isPackaged) return
+  autoUpdater.on('error', () => { /* offline or no published release — ignore */ })
+  autoUpdater.on('update-downloaded', () => {
+    tray?.displayBalloon({
+      title: 'quake-term',
+      content: 'An update was downloaded and will install when you quit.'
+    })
+  })
+  void autoUpdater.checkForUpdatesAndNotify()
 }
 
 function registerIpc(): void {
@@ -146,6 +159,13 @@ app.whenReady().then(() => {
         wm.win.webContents.send('ui:open-settings')
       }
     },
+    {
+      label: 'Check for updates',
+      click: () => {
+        if (app.isPackaged) void autoUpdater.checkForUpdates()
+        else tray.displayBalloon({ title: 'quake-term', content: 'Updates are available only in the installed app.' })
+      }
+    },
     { type: 'separator' },
     {
       label: 'Quit',
@@ -158,6 +178,7 @@ app.whenReady().then(() => {
   tray.on('click', () => wm.toggle())
 
   applyMainConfig()
+  setupAutoUpdate()
   if (store.corrupt) {
     tray.displayBalloon({
       title: 'quake-term',
