@@ -162,13 +162,13 @@ html.transparent-window #app { opacity: var(--win-opacity); }
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 6vh;
+  padding-top: 3vh;
   background: rgba(0, 0, 0, 0.45);
 }
 .settings-dialog {
   width: 620px;
   max-width: calc(100% - 32px);
-  max-height: 84vh;
+  max-height: 94vh;
   display: flex;
   flex-direction: column;
   background: var(--ui-bg);
@@ -217,11 +217,11 @@ html.transparent-window #app { opacity: var(--win-opacity); }
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ui-muted);
-  margin: 14px 0 8px;
+  margin: 10px 0 6px;
 }
 .section-title:first-child { margin-top: 0; }
 
-.field { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.field { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .field > label { flex: none; width: 132px; }
 .field > *:last-child { flex: 1; }
 
@@ -289,15 +289,16 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 }
 .theme-sample-ansi { letter-spacing: 1px; margin-top: 2px; }
 
-.font-field { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.font-field { display: flex; flex-direction: column; gap: 5px; width: 100%; min-width: 0; }
 .font-specimen {
-  padding: 6px 8px;
+  padding: 4px 8px;
   border: 1px solid var(--ui-border);
   border-radius: 6px;
   background: var(--term-bg);
   color: var(--ui-fg);
   white-space: nowrap;
   overflow: hidden;
+  line-height: 1.3;
 }
 
 .editor-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }

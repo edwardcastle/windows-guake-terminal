@@ -437,21 +437,29 @@ export class SettingsUI {
     }
 
     const populate = (families: string[]): void => {
-      const known = families.includes(cfg.fontFamily)
+      const current = cfg.fontFamily
       select.textContent = ''
+      // Show the current value (e.g. a custom stack) as a selected option so the
+      // custom text box stays hidden until the user picks "Custom…".
+      if (current && !families.includes(current)) {
+        const o = document.createElement('option')
+        o.value = current
+        o.textContent = current
+        o.selected = true
+        select.appendChild(o)
+      }
       for (const f of families) {
         const o = document.createElement('option')
         o.value = f
         o.textContent = f
-        o.selected = f === cfg.fontFamily
+        o.selected = f === current
         select.appendChild(o)
       }
       const c = document.createElement('option')
       c.value = CUSTOM
       c.textContent = 'Custom…'
-      c.selected = !known
       select.appendChild(c)
-      custom.classList.toggle('hidden', known)
+      custom.classList.add('hidden')
     }
 
     populate(this.localFonts && this.localFonts.length ? this.localFonts : curated)
