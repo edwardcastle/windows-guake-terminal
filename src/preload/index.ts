@@ -22,6 +22,7 @@ const api = {
   version: ipcRenderer.sendSync('app:version') as string,
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   loadImage: (path: string) => ipcRenderer.invoke('image:load', path) as Promise<string | null>,
+  pickImage: () => ipcRenderer.invoke('dialog:pickImage') as Promise<string | null>,
   loadSession: () => ipcRenderer.invoke('session:load') as Promise<unknown>,
   saveSession: (data: unknown) => ipcRenderer.send('session:save', data)
 }

@@ -136,6 +136,19 @@ function registerIpc(): void {
   })
   ipcMain.on('window:hide', () => wm.hide())
   ipcMain.on('app:version', (e) => { e.returnValue = app.getVersion() })
+  ipcMain.handle('dialog:pickImage', async () => {
+    wm.modalOpen = true
+    try {
+      const r = await dialog.showOpenDialog(wm.win, {
+        title: 'Choose a background image',
+        properties: ['openFile'],
+        filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'] }]
+      })
+      return r.canceled || !r.filePaths.length ? null : r.filePaths[0]
+    } finally {
+      wm.modalOpen = false
+    }
+  })
   ipcMain.handle('session:load', () => {
     try {
       return JSON.parse(fs.readFileSync(sessionFile, 'utf8'))

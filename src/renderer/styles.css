@@ -289,6 +289,10 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 }
 .theme-sample-ansi { letter-spacing: 1px; margin-top: 2px; }
 
+.bg-image-control { display: flex; gap: 6px; align-items: center; min-width: 0; }
+.bg-image-control input { flex: 1; min-width: 0; }
+.bg-image-control .btn { flex: none; }
+
 .font-field { display: flex; flex-direction: column; gap: 5px; width: 100%; min-width: 0; }
 .font-specimen {
   padding: 4px 8px;

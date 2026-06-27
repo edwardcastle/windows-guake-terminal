@@ -4,6 +4,7 @@ import type { Config } from '../shared/config'
 
 export class WindowManager {
   readonly win: BrowserWindow
+  modalOpen = false
   private animating = false
 
   constructor(private getConfig: () => Config) {
@@ -30,7 +31,7 @@ export class WindowManager {
     this.win.webContents.session.setPermissionRequestHandler((_wc, _perm, cb) => cb(true))
     this.win.webContents.session.setPermissionCheckHandler(() => true)
     this.win.on('blur', () => {
-      if (this.getConfig().hideOnBlur && !this.win.webContents.isDevToolsFocused()) {
+      if (this.getConfig().hideOnBlur && !this.modalOpen && !this.win.webContents.isDevToolsFocused()) {
         this.hide()
       }
     })

@@ -260,7 +260,20 @@ export class SettingsUI {
     }
 
     this.sectionTitle('Background image')
-    this.textField('Image path', cfg.backgroundImage, (v) => this.patch({ backgroundImage: v.trim() }))
+    const bg = document.createElement('div')
+    bg.className = 'bg-image-control'
+    const bgPath = document.createElement('input')
+    bgPath.type = 'text'
+    bgPath.placeholder = 'Image path…'
+    bgPath.value = cfg.backgroundImage
+    bgPath.addEventListener('change', () => this.patch({ backgroundImage: bgPath.value.trim() }))
+    bg.append(bgPath, makeButton('Browse…', () => {
+      void window.api.pickImage().then((p) => { if (p) this.patch({ backgroundImage: p }) })
+    }))
+    if (cfg.backgroundImage) {
+      bg.appendChild(makeButton('Clear', () => this.patch({ backgroundImage: '' })))
+    }
+    this.fieldRow('Image', bg)
     if (cfg.backgroundImage) {
       this.sliderField('Dim', cfg.backgroundDim, 0, 0.9, 0.05, (v) => `${Math.round(v * 100)}%`, (v) => this.patch({ backgroundDim: v }))
       this.sliderField('Blur', cfg.backgroundBlur, 0, 40, 1, (v) => `${v}px`, (v) => this.patch({ backgroundBlur: v }))
