@@ -36,7 +36,9 @@ export class TermPane {
     const app = resolveAppearance(cfg, profile)
     this.term = new Terminal({
       allowProposedApi: true,
-      allowTransparency: true,
+      // Only allow transparency when a background image is set — with the WebGL
+      // renderer it otherwise blends the text and shifts the theme's colors.
+      allowTransparency: !!cfg.backgroundImage,
       cursorBlink: cfg.cursorBlink,
       cursorStyle: cfg.cursorStyle,
       fontWeight: cfg.fontWeight as FontWeight,
