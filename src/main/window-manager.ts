@@ -25,6 +25,10 @@ export class WindowManager {
       }
     })
     this.win.setAlwaysOnTop(true, 'screen-saver')
+    // The renderer only ever loads this app's own local content, so granting its
+    // permission requests (local-fonts for the font picker, clipboard, …) is safe.
+    this.win.webContents.session.setPermissionRequestHandler((_wc, _perm, cb) => cb(true))
+    this.win.webContents.session.setPermissionCheckHandler(() => true)
     this.win.on('blur', () => {
       if (this.getConfig().hideOnBlur && !this.win.webContents.isDevToolsFocused()) {
         this.hide()
