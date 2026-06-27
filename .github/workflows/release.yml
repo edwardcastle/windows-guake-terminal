@@ -1,8 +1,9 @@
 name: Release
 
-# Build the Windows installer and publish it to a GitHub Release whenever a
-# version tag like v0.1.1 is pushed. electron-updater on the installed app then
-# picks the new release up automatically.
+# Build the Windows installer and publish it to a single GitHub Release when a
+# version tag like v0.1.4 is pushed. electron-builder only *builds* here
+# (--publish never); a dedicated action uploads every artifact to one release,
+# avoiding electron-builder's duplicate-release race with the GitHub provider.
 on:
   push:
     tags: ['v*.*.*']
@@ -20,13 +21,14 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Build and publish
-        run: npm run release
-        env:
-          # Provided automatically by GitHub Actions; needs the contents:write
-          # permission above to create the release and upload assets.
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Windows code signing (optional): add these repo secrets to sign the
-          # installer and avoid SmartScreen warnings.
-          # WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          # WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      - run: npm run build
+      - name: Build the installer
+        run: npx electron-builder --win --publish never
+      - name: Create the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            dist/*.exe
+            dist/latest.yml
+            dist/*.blockmap
