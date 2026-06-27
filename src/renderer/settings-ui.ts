@@ -53,6 +53,7 @@ export class SettingsUI {
   private nav = document.createElement('div')
   private content = document.createElement('div')
   private active: Category = 'Appearance'
+  private localFonts: string[] | null = null
 
   constructor(
     parent: HTMLElement,
@@ -417,48 +418,69 @@ export class SettingsUI {
       'Source Code Pro', 'Hack', 'Menlo', 'Monaco', 'Ubuntu Mono',
       'DejaVu Sans Mono', 'Roboto Mono', 'IBM Plex Mono', 'Courier New'
     ]
+    const CUSTOM = ' '
     const wrap = document.createElement('div')
     wrap.className = 'font-field'
-    const input = document.createElement('input')
-    input.type = 'text'
-    input.value = cfg.fontFamily
-    input.setAttribute('list', 'qt-font-list')
-    const dl = document.createElement('datalist')
-    dl.id = 'qt-font-list'
-    for (const f of curated) {
-      const o = document.createElement('option')
-      o.value = f
-      dl.appendChild(o)
-    }
+    const select = document.createElement('select')
+    const custom = document.createElement('input')
+    custom.type = 'text'
+    custom.placeholder = 'Custom font family or stack…'
+    custom.value = cfg.fontFamily
     const specimen = document.createElement('div')
     specimen.className = 'font-specimen'
     specimen.textContent = 'The quick brown fox  0123  => != -> =='
-    const paint = (): void => {
-      specimen.style.fontFamily = input.value
+
+    const paint = (value: string): void => {
+      specimen.style.fontFamily = value
       specimen.style.fontSize = `${cfg.fontSize}px`
       specimen.style.fontWeight = String(cfg.fontWeight)
     }
-    paint()
-    input.addEventListener('input', paint)
-    input.addEventListener('change', () => this.patch({ fontFamily: input.value }))
-    // Upgrade the suggestions to the system's installed fonts if the browser
-    // grants the Local Font Access permission; otherwise keep the curated list.
-    input.addEventListener('focus', () => {
-      const q = (window as unknown as { queryLocalFonts?: () => Promise<{ family: string }[]> }).queryLocalFonts
-      if (!q || dl.dataset.loaded) return
-      dl.dataset.loaded = '1'
-      q().then((fonts) => {
-        const families = [...new Set(fonts.map((f) => f.family))].sort()
-        if (!families.length) return
-        dl.textContent = ''
-        for (const f of families) {
-          const o = document.createElement('option')
-          o.value = f
-          dl.appendChild(o)
-        }
-      }).catch(() => { /* unsupported or denied — keep curated list */ })
+
+    const populate = (families: string[]): void => {
+      const known = families.includes(cfg.fontFamily)
+      select.textContent = ''
+      for (const f of families) {
+        const o = document.createElement('option')
+        o.value = f
+        o.textContent = f
+        o.selected = f === cfg.fontFamily
+        select.appendChild(o)
+      }
+      const c = document.createElement('option')
+      c.value = CUSTOM
+      c.textContent = 'Custom…'
+      c.selected = !known
+      select.appendChild(c)
+      custom.classList.toggle('hidden', known)
+    }
+
+    populate(this.localFonts && this.localFonts.length ? this.localFonts : curated)
+    paint(cfg.fontFamily)
+
+    select.addEventListener('change', () => {
+      if (select.value === CUSTOM) {
+        custom.classList.remove('hidden')
+        custom.focus()
+      } else {
+        custom.classList.add('hidden')
+        paint(select.value)
+        this.patch({ fontFamily: select.value })
+      }
     })
-    wrap.append(input, dl, specimen)
+    custom.addEventListener('input', () => paint(custom.value))
+    custom.addEventListener('change', () => this.patch({ fontFamily: custom.value }))
+
+    // Load the system's installed fonts once (needs Local Font Access), then the
+    // dropdown lists them instead of the curated fallback.
+    const q = (window as unknown as { queryLocalFonts?: () => Promise<{ family: string }[]> }).queryLocalFonts
+    if (this.localFonts === null && q) {
+      q().then((fonts) => {
+        this.localFonts = [...new Set(fonts.map((f) => f.family))].sort()
+        if (this.localFonts.length) populate(this.localFonts)
+      }).catch(() => { this.localFonts = [] })
+    }
+
+    wrap.append(select, custom, specimen)
     this.fieldRow('Family', wrap)
   }
 
