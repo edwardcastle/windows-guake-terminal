@@ -80,7 +80,7 @@ function activePane(): TermPane | undefined {
   return t ? panes.get(t.activePane) : undefined
 }
 
-function createPane(profileId: string): TermPane {
+function createPane(profileId: string, cwd?: string): TermPane {
   const profile = profiles.find((p) => p.id === profileId)
   const pane = new TermPane(uid('p'), profile, config)
   panes.set(pane.id, pane)
@@ -91,7 +91,7 @@ function createPane(profileId: string): TermPane {
       render()
     }
   }
-  void pane.spawnShell()
+  void pane.spawnShell(cwd)
   return pane
 }
 
@@ -101,7 +101,7 @@ function profileName(id: string): string {
 
 export function newTab(profileId?: string): void {
   const pid = profileId || config.defaultProfileId || profiles[0].id
-  const pane = createPane(pid)
+  const pane = createPane(pid, activePane()?.cwd)
   const container = document.createElement('div')
   container.className = 'tab-container'
   container.appendChild(pane.el)
@@ -202,7 +202,7 @@ function splitActive(dir: 'row' | 'col'): void {
   const tab = activeTab()
   if (!tab) return
   const current = panes.get(tab.activePane)
-  const pane = createPane(current?.profileId || config.defaultProfileId || profiles[0].id)
+  const pane = createPane(current?.profileId || config.defaultProfileId || profiles[0].id, current?.cwd)
   tab.root = splitPane(tab.root, tab.activePane, dir, pane.id, uid('s'))
   tab.activePane = pane.id
   render()

@@ -1,8 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 const api = {
-  spawn: (paneId: string, profileId: string, cols: number, rows: number) =>
-    ipcRenderer.invoke('pty:spawn', paneId, profileId, cols, rows) as Promise<string | null>,
+  spawn: (paneId: string, profileId: string, cols: number, rows: number, cwd?: string) =>
+    ipcRenderer.invoke('pty:spawn', paneId, profileId, cols, rows, cwd) as Promise<string | null>,
   write: (paneId: string, data: string) => ipcRenderer.send('pty:write', paneId, data),
   resize: (paneId: string, cols: number, rows: number) =>
     ipcRenderer.send('pty:resize', paneId, cols, rows),

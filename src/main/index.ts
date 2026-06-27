@@ -1,5 +1,6 @@
 import { app, globalShortcut, ipcMain, Menu, nativeImage, Tray } from 'electron'
 import path from 'node:path'
+import fs from 'node:fs'
 import * as nodePty from 'node-pty'
 import { ConfigStore } from './config-store'
 import { detectProfiles } from './profiles'
@@ -53,14 +54,16 @@ function applyMainConfig(): void {
 }
 
 function registerIpc(): void {
-  ipcMain.handle('pty:spawn', (_e, paneId: string, profileId: string, cols: number, rows: number) => {
+  ipcMain.handle('pty:spawn', (_e, paneId: string, profileId: string, cols: number, rows: number, cwd?: string) => {
     const profile = store.config.profiles.find((p) => p.id === profileId)
     if (!profile) return `unknown profile: ${profileId}`
+    const safeCwd = typeof cwd === 'string' && fs.existsSync(cwd) ? cwd : undefined
     try {
       ptys.spawn(
         paneId, profile, cols, rows,
         (d) => wm.win.webContents.send('pty:data', paneId, d),
-        (c) => wm.win.webContents.send('pty:exit', paneId, c)
+        (c) => wm.win.webContents.send('pty:exit', paneId, c),
+        safeCwd
       )
       return null
     } catch (err) {

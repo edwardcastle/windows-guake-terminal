@@ -14,6 +14,7 @@ export class TermPane {
   readonly fit = new FitAddon()
   readonly search = new SearchAddon()
   readonly profileId: string
+  cwd?: string
   exited = false
   onTitle?: (title: string) => void
 
@@ -51,6 +52,17 @@ export class TermPane {
     })
     this.term.onResize(({ cols, rows }) => window.api.resize(this.id, cols, rows))
     this.term.onTitleChange((t) => this.onTitle?.(t))
+    // OSC 7 reports the shell's working directory (file://host/path); track it so
+    // new tabs/splits can open in the same directory.
+    this.term.parser.registerOscHandler(7, (uri) => {
+      try {
+        const p = decodeURIComponent(new URL(uri).pathname)
+        this.cwd = /^\/[a-zA-Z]:/.test(p) ? p.slice(1) : p
+      } catch {
+        // malformed OSC 7 payload — ignore
+      }
+      return false
+    })
     this.term.attachCustomKeyEventHandler((e) => {
       if (this.exited && e.type === 'keydown' && e.key === 'Enter') {
         this.respawn()
@@ -78,10 +90,10 @@ export class TermPane {
     if (text && !this.exited) this.term.paste(text)
   }
 
-  async spawnShell(): Promise<void> {
+  async spawnShell(cwd?: string): Promise<void> {
     this.exited = false
     this.fitNow()
-    const err = await window.api.spawn(this.id, this.profileId, this.term.cols, this.term.rows)
+    const err = await window.api.spawn(this.id, this.profileId, this.term.cols, this.term.rows, cwd ?? this.cwd)
     if (err) {
       this.exited = true
       this.term.writeln(`\x1b[31mfailed to start: ${err}\x1b[0m`)
