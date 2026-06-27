@@ -59,7 +59,7 @@ export interface Config {
 }
 
 export const DEFAULT_CONFIG: Config = {
-  hotkey: 'CommandOrControl+`',
+  hotkey: 'F12',
   defaultProfileId: '',
   profiles: [],
   keybindings: {
@@ -103,7 +103,7 @@ export const DEFAULT_CONFIG: Config = {
   lineHeight: 1.2,
   scrollback: 10000,
   widthPct: 100,
-  heightPct: 45,
+  heightPct: 100,
   animationMs: 150,
   hideOnBlur: true,
   startWithWindows: true,

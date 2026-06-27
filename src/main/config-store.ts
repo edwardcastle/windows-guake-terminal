@@ -46,8 +46,19 @@ export class ConfigStore {
       clearTimeout(this.writeTimer)
       this.writeTimer = null
     }
-    const tmp = this.file + '.tmp'
-    fs.writeFileSync(tmp, JSON.stringify(this.config, null, 2))
-    fs.renameSync(tmp, this.file)
+    const json = JSON.stringify(this.config, null, 2)
+    try {
+      const tmp = this.file + '.tmp'
+      fs.writeFileSync(tmp, json)
+      fs.renameSync(tmp, this.file)
+    } catch {
+      // tmp+rename can throw on Windows (EPERM/EEXIST under AV/locks); fall back
+      // to a plain write so a save (or quit) never crashes the main process.
+      try {
+        fs.writeFileSync(this.file, json)
+      } catch {
+        // give up silently — config persistence is best-effort
+      }
+    }
   }
 }

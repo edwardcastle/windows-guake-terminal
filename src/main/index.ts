@@ -8,6 +8,11 @@ import { detectProfiles } from './profiles'
 import { PtyManager, SpawnFn } from './pty-manager'
 import { WindowManager } from './window-manager'
 
+// Never surface Electron's "A JavaScript error occurred in the main process"
+// dialog to the user — log and keep running instead.
+process.on('uncaughtException', (err) => console.error('[main] uncaught exception:', err))
+process.on('unhandledRejection', (err) => console.error('[main] unhandled rejection:', err))
+
 if (process.platform === 'linux') {
   // Linux defaults to an opaque window visual; without this switch a
   // transparent BrowserWindow still renders over an opaque (gray/black)
@@ -65,7 +70,7 @@ function setupAutoUpdate(): void {
       content: 'An update was downloaded and will install when you quit.'
     })
   })
-  void autoUpdater.checkForUpdatesAndNotify()
+  autoUpdater.checkForUpdatesAndNotify().catch(() => { /* no published release / offline */ })
 }
 
 function registerIpc(): void {
