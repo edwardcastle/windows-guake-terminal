@@ -65,6 +65,15 @@ function focusPane(paneId: string): void {
   tab.activePane = paneId
   render()
 }
+
+function moveTab(from: number, to: number): void {
+  if (from === to || from < 0 || to < 0 || from >= tabs.length || to >= tabs.length) return
+  const activeId = tabs[activeTabIdx]?.id
+  const [moved] = tabs.splice(from, 1)
+  tabs.splice(to, 0, moved)
+  activeTabIdx = Math.max(0, tabs.findIndex((t) => t.id === activeId))
+  render()
+}
 function activePane(): TermPane | undefined {
   const t = activeTab()
   return t ? panes.get(t.activePane) : undefined
@@ -144,7 +153,8 @@ export function render(): void {
       newTab,
       openSettings: () => settings.open(),
       rename: (i, name) => { const t = tabs[i]; if (t) { t.customTitle = name.trim() || undefined; render() } },
-      setColor: (i, color) => { const t = tabs[i]; if (t) { t.customColor = color || undefined; render() } }
+      setColor: (i, color) => { const t = tabs[i]; if (t) { t.customColor = color || undefined; render() } },
+      moveTab
     }
   )
   tabs.forEach((tab, i) => {

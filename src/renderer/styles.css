@@ -59,6 +59,7 @@ html.transparent-window #app { opacity: var(--win-opacity); }
   border-bottom-color: var(--ui-accent);
   background: var(--term-bg);
 }
+.tab.dragging { opacity: 0.5; }
 .tab .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .tab .title { overflow: hidden; text-overflow: ellipsis; }
 .tab .close { opacity: 0.5; padding: 0 2px; border-radius: 3px; }
