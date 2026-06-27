@@ -110,6 +110,7 @@ html.transparent-window #app { opacity: var(--win-opacity); }
   right: 16px;
   padding: 6px 8px;
   display: flex;
+  align-items: center;
   gap: 6px;
   background: var(--ui-bg);
   border: 1px solid var(--ui-border);
@@ -123,9 +124,29 @@ html.transparent-window #app { opacity: var(--win-opacity); }
   padding: 4px 7px;
   border-radius: 6px;
   outline: none;
-  width: 220px;
+  width: 190px;
 }
 #findbar input:focus { border-color: var(--ui-accent); }
+.find-count {
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+  text-align: center;
+  font-size: 12px;
+}
+.find-toggle {
+  background: var(--term-bg);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-muted);
+  border-radius: 5px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 6px;
+  min-width: 26px;
+}
+.find-toggle:hover { color: var(--ui-fg); }
+.find-toggle.on { background: var(--ui-accent); color: var(--ui-bg); border-color: var(--ui-accent); }
 
 /* ---- settings modal ---- */
 #settings {
