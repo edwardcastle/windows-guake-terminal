@@ -15,10 +15,15 @@ export function renderPanes(
   const W = container.clientWidth
   const H = container.clientHeight
 
+  // Hide every pane first, then show only those in the current layout — lets a
+  // single-leaf root (zoom) display one pane full-size with the rest hidden.
+  container.querySelectorAll<HTMLElement>('.pane').forEach((el) => { el.style.display = 'none' })
+
   for (const [paneId, r] of layout(root)) {
     const pane = panes.get(paneId)
     if (!pane) continue
     if (pane.el.parentElement !== container) container.appendChild(pane.el)
+    pane.el.style.display = ''
     // Clear inset FIRST: it is the shorthand for top/right/bottom/left, so
     // assigning it after left/top would wipe the geometry we set (the bug that
     // stacked split panes at 0,0).

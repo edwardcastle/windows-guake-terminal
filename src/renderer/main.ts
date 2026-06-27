@@ -16,6 +16,7 @@ interface Tab {
   title: string
   customTitle?: string
   customColor?: string
+  zoomedPane?: string
   root: PaneNode
   activePane: string
   container: HTMLDivElement
@@ -162,7 +163,9 @@ export function render(): void {
   })
   const tab = activeTab()
   if (tab) {
-    renderPanes(tab.container, tab.root, panes, tab.activePane,
+    const zoomed = tab.zoomedPane && leaves(tab.root).includes(tab.zoomedPane)
+    const root = zoomed ? leaf(tab.zoomedPane as string) : tab.root
+    renderPanes(tab.container, root, panes, tab.activePane,
       (splitId, ratio) => {
         tab.root = setRatio(tab.root, splitId, ratio)
         render()
@@ -221,6 +224,13 @@ function closeActivePane(): void {
   render()
 }
 
+function toggleZoom(): void {
+  const tab = activeTab()
+  if (!tab || leaves(tab.root).length < 2) return
+  tab.zoomedPane = tab.zoomedPane ? undefined : tab.activePane
+  render()
+}
+
 function focusDirection(dir: 'left' | 'right' | 'up' | 'down'): void {
   const tab = activeTab()
   if (!tab) return
@@ -246,6 +256,7 @@ async function runAction(action: string): Promise<void> {
     case 'prevTab': nextTab(-1); break
     case 'splitRight': splitActive('row'); break
     case 'splitDown': splitActive('col'); break
+    case 'zoomPane': toggleZoom(); break
     case 'focusLeft': focusDirection('left'); break
     case 'focusRight': focusDirection('right'); break
     case 'focusUp': focusDirection('up'); break

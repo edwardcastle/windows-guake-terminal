@@ -14,7 +14,7 @@ export interface Profile {
 
 export const ACTIONS = [
   'newTab', 'closePane', 'nextTab', 'prevTab',
-  'splitRight', 'splitDown',
+  'splitRight', 'splitDown', 'zoomPane',
   'focusLeft', 'focusRight', 'focusUp', 'focusDown',
   'copy', 'paste', 'find',
   'fontBigger', 'fontSmaller', 'fontReset',
@@ -61,6 +61,7 @@ export const DEFAULT_CONFIG: Config = {
     prevTab: 'Ctrl+Shift+Tab',
     splitRight: 'Ctrl+Shift+D',
     splitDown: 'Ctrl+Shift+S',
+    zoomPane: 'Ctrl+Shift+Z',
     focusLeft: 'Alt+ArrowLeft',
     focusRight: 'Alt+ArrowRight',
     focusUp: 'Alt+ArrowUp',
