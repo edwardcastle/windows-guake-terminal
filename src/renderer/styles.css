@@ -190,6 +190,14 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 .settings-head .close { cursor: pointer; opacity: 0.6; font-size: 15px; }
 .settings-head .close:hover { opacity: 1; }
 .settings-body { display: flex; min-height: 0; flex: 1; }
+.settings-foot {
+  flex: none;
+  padding: 6px 16px;
+  border-top: 1px solid var(--ui-border);
+  color: var(--ui-muted);
+  font-size: 11px;
+  text-align: right;
+}
 .settings-nav {
   flex: none;
   width: 132px;

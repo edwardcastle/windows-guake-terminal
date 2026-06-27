@@ -88,7 +88,10 @@ export class SettingsUI {
     this.nav.className = 'settings-nav'
     this.content.className = 'settings-content'
     body.append(this.nav, this.content)
-    this.dialog.append(head, body)
+    const foot = document.createElement('div')
+    foot.className = 'settings-foot'
+    foot.textContent = `quake-term v${window.api.version}`
+    this.dialog.append(head, body, foot)
     this.el.appendChild(this.dialog)
     parent.appendChild(this.el)
   }

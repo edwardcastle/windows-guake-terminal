@@ -19,6 +19,7 @@ const api = {
   onOpenSettings: (cb: () => void) => ipcRenderer.on('ui:open-settings', () => cb()),
   hideWindow: () => ipcRenderer.send('window:hide'),
   platform: process.platform,
+  version: ipcRenderer.sendSync('app:version') as string,
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   loadImage: (path: string) => ipcRenderer.invoke('image:load', path) as Promise<string | null>,
   loadSession: () => ipcRenderer.invoke('session:load') as Promise<unknown>,

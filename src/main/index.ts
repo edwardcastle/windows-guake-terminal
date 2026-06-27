@@ -135,6 +135,7 @@ function registerIpc(): void {
     return c
   })
   ipcMain.on('window:hide', () => wm.hide())
+  ipcMain.on('app:version', (e) => { e.returnValue = app.getVersion() })
   ipcMain.handle('session:load', () => {
     try {
       return JSON.parse(fs.readFileSync(sessionFile, 'utf8'))
