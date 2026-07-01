@@ -1,6 +1,7 @@
 import { app, dialog, globalShortcut, ipcMain, Menu, nativeImage, Tray } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import * as nodePty from 'node-pty'
 import { autoUpdater } from 'electron-updater'
 import { ConfigStore } from './config-store'
@@ -40,6 +41,22 @@ let wm: WindowManager
 let tray: Tray
 let quitting = false
 let registeredHotkey = ''
+
+// A GUI app inherits the PATH from when the session/Explorer started, so tools
+// installed since (node/npm, etc.) can be missing. Re-read the live machine+user
+// PATH from the registry so spawned shells can find them.
+function refreshWindowsPath(): void {
+  if (process.platform !== 'win32') return
+  try {
+    const combined = execFileSync('powershell.exe', [
+      '-NoProfile', '-NonInteractive', '-Command',
+      "[Environment]::ExpandEnvironmentVariables(([Environment]::GetEnvironmentVariable('Path','Machine')) + ';' + ([Environment]::GetEnvironmentVariable('Path','User')))"
+    ], { encoding: 'utf8', timeout: 5000 }).trim()
+    if (combined) process.env.PATH = combined
+  } catch {
+    // couldn't read the registry PATH — keep the inherited one
+  }
+}
 
 function applyMainConfig(): void {
   const cfg = store.config
@@ -177,6 +194,7 @@ function registerIpc(): void {
 }
 
 app.whenReady().then(() => {
+  refreshWindowsPath()
   store.load()
   if (store.config.profiles.length === 0) {
     const detected = detectProfiles()
