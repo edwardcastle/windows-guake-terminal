@@ -20,8 +20,18 @@ describe('ConfigStore', () => {
     const s = new ConfigStore(dir)
     s.load()
     s.set({ fontSize: 20 })
+    s.flush()
     const s2 = new ConfigStore(dir)
     expect(s2.load().fontSize).toBe(20)
+  })
+
+  test('set() debounces the write; flush persists it', () => {
+    const s = new ConfigStore(dir)
+    s.load()
+    s.set({ fontSize: 22 })
+    expect(fs.existsSync(s.file)).toBe(false) // not written synchronously
+    s.flush()
+    expect(JSON.parse(fs.readFileSync(s.file, 'utf8')).fontSize).toBe(22)
   })
 
   test('corrupt file: backed up, defaults loaded, flagged', () => {

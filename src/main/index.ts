@@ -1,10 +1,18 @@
-import { app, globalShortcut, ipcMain, Menu, nativeImage, Tray } from 'electron'
+import { app, dialog, globalShortcut, ipcMain, Menu, nativeImage, Tray } from 'electron'
 import path from 'node:path'
+import fs from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import * as nodePty from 'node-pty'
+import { autoUpdater } from 'electron-updater'
 import { ConfigStore } from './config-store'
 import { detectProfiles } from './profiles'
 import { PtyManager, SpawnFn } from './pty-manager'
 import { WindowManager } from './window-manager'
+
+// Never surface Electron's "A JavaScript error occurred in the main process"
+// dialog to the user — log and keep running instead.
+process.on('uncaughtException', (err) => console.error('[main] uncaught exception:', err))
+process.on('unhandledRejection', (err) => console.error('[main] unhandled rejection:', err))
 
 if (process.platform === 'linux') {
   // Linux defaults to an opaque window visual; without this switch a
@@ -25,12 +33,30 @@ const realSpawn: SpawnFn = (exe, args, opts) =>
     env: opts.env as { [k: string]: string }
   })
 
-const store = new ConfigStore(path.join(app.getPath('appData'), 'quake-term'))
+const appDir = path.join(app.getPath('appData'), 'quake-term')
+const store = new ConfigStore(appDir)
+const sessionFile = path.join(appDir, 'session.json')
 const ptys = new PtyManager(realSpawn)
 let wm: WindowManager
 let tray: Tray
 let quitting = false
 let registeredHotkey = ''
+
+// A GUI app inherits the PATH from when the session/Explorer started, so tools
+// installed since (node/npm, etc.) can be missing. Re-read the live machine+user
+// PATH from the registry so spawned shells can find them.
+function refreshWindowsPath(): void {
+  if (process.platform !== 'win32') return
+  try {
+    const combined = execFileSync('powershell.exe', [
+      '-NoProfile', '-NonInteractive', '-Command',
+      "[Environment]::ExpandEnvironmentVariables(([Environment]::GetEnvironmentVariable('Path','Machine')) + ';' + ([Environment]::GetEnvironmentVariable('Path','User')))"
+    ], { encoding: 'utf8', timeout: 5000 }).trim()
+    if (combined) process.env.PATH = combined
+  } catch {
+    // couldn't read the registry PATH — keep the inherited one
+  }
+}
 
 function applyMainConfig(): void {
   const cfg = store.config
@@ -52,15 +78,62 @@ function applyMainConfig(): void {
   }
 }
 
+let manualCheck = false
+
+function notify(message: string, detail?: string): void {
+  void dialog.showMessageBox({ type: 'info', title: 'quake-term', message, detail, buttons: ['OK'] })
+}
+
+function checkForUpdates(manual: boolean): void {
+  if (!app.isPackaged) {
+    if (manual) notify('Updates are only available in the installed app.')
+    return
+  }
+  manualCheck = manual
+  autoUpdater.checkForUpdates().catch(() => { /* the 'error' event reports it */ })
+}
+
+function setupAutoUpdate(): void {
+  if (!app.isPackaged) return
+  autoUpdater.on('update-available', () => {
+    if (manualCheck) notify('Update available', 'Downloading in the background…')
+  })
+  autoUpdater.on('update-not-available', () => {
+    if (manualCheck) notify("You're up to date.")
+    manualCheck = false
+  })
+  autoUpdater.on('error', (err) => {
+    if (manualCheck) notify('Update check failed', String((err && err.message) || err))
+    manualCheck = false
+  })
+  autoUpdater.on('update-downloaded', (info) => {
+    manualCheck = false
+    void dialog.showMessageBox({
+      type: 'info', title: 'quake-term',
+      message: `Update ${info && info.version ? 'v' + info.version + ' ' : ''}ready to install`,
+      detail: 'Quit and install now, or it will install the next time you quit.',
+      buttons: ['Quit and install', 'Later'], defaultId: 0
+    }).then((r) => {
+      if (r.response === 0) {
+        quitting = true
+        autoUpdater.quitAndInstall()
+      }
+    })
+  })
+  checkForUpdates(false)
+}
+
 function registerIpc(): void {
-  ipcMain.handle('pty:spawn', (_e, paneId: string, profileId: string, cols: number, rows: number) => {
+  ipcMain.handle('pty:spawn', (_e, paneId: string, profileId: string, cols: number, rows: number, cwd?: string) => {
     const profile = store.config.profiles.find((p) => p.id === profileId)
     if (!profile) return `unknown profile: ${profileId}`
+    const safeCwd = typeof cwd === 'string' && fs.existsSync(cwd) ? cwd : undefined
     try {
       ptys.spawn(
         paneId, profile, cols, rows,
         (d) => wm.win.webContents.send('pty:data', paneId, d),
-        (c) => wm.win.webContents.send('pty:exit', paneId, c)
+        (c) => wm.win.webContents.send('pty:exit', paneId, c),
+        safeCwd
       )
       return null
     } catch (err) {
@@ -79,9 +152,49 @@ function registerIpc(): void {
     return c
   })
   ipcMain.on('window:hide', () => wm.hide())
+  ipcMain.on('app:version', (e) => { e.returnValue = app.getVersion() })
+  ipcMain.handle('dialog:pickImage', async () => {
+    wm.modalOpen = true
+    try {
+      const r = await dialog.showOpenDialog(wm.win, {
+        title: 'Choose a background image',
+        properties: ['openFile'],
+        filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'] }]
+      })
+      return r.canceled || !r.filePaths.length ? null : r.filePaths[0]
+    } finally {
+      wm.modalOpen = false
+    }
+  })
+  ipcMain.handle('session:load', () => {
+    try {
+      return JSON.parse(fs.readFileSync(sessionFile, 'utf8'))
+    } catch {
+      return null
+    }
+  })
+  ipcMain.on('session:save', (_e, data: unknown) => {
+    try {
+      const tmp = sessionFile + '.tmp'
+      fs.writeFileSync(tmp, JSON.stringify(data))
+      fs.renameSync(tmp, sessionFile)
+    } catch {
+      // ignore session write failures
+    }
+  })
+  ipcMain.handle('image:load', (_e, p: string) => {
+    try {
+      const ext = (path.extname(p).slice(1) || 'png').toLowerCase()
+      const mime = ext === 'svg' ? 'svg+xml' : ext === 'jpg' ? 'jpeg' : ext
+      return `data:image/${mime};base64,${fs.readFileSync(p).toString('base64')}`
+    } catch {
+      return null
+    }
+  })
 }
 
 app.whenReady().then(() => {
+  refreshWindowsPath()
   store.load()
   if (store.config.profiles.length === 0) {
     const detected = detectProfiles()
@@ -116,6 +229,7 @@ app.whenReady().then(() => {
         wm.win.webContents.send('ui:open-settings')
       }
     },
+    { label: 'Check for updates', click: () => checkForUpdates(true) },
     { type: 'separator' },
     {
       label: 'Quit',
@@ -128,6 +242,7 @@ app.whenReady().then(() => {
   tray.on('click', () => wm.toggle())
 
   applyMainConfig()
+  setupAutoUpdate()
   if (store.corrupt) {
     tray.displayBalloon({
       title: 'quake-term',
@@ -141,6 +256,7 @@ app.on('second-instance', () => wm?.toggle())
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   ptys.killAll()
+  store.flush()
 })
 app.on('window-all-closed', () => {
   // keep running in the tray

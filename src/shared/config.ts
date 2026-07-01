@@ -14,14 +14,17 @@ export interface Profile {
 
 export const ACTIONS = [
   'newTab', 'closePane', 'nextTab', 'prevTab',
-  'splitRight', 'splitDown',
+  'splitRight', 'splitDown', 'zoomPane',
   'focusLeft', 'focusRight', 'focusUp', 'focusDown',
   'copy', 'paste', 'find',
-  'fontBigger', 'fontSmaller', 'fontReset', 'settings'
+  'fontBigger', 'fontSmaller', 'fontReset',
+  'clearBuffer', 'resetTerminal', 'commandPalette', 'settings'
 ] as const
 export type Action = (typeof ACTIONS)[number]
 
 export type CursorStyle = 'block' | 'bar' | 'underline'
+export type DropdownEdge = 'top' | 'bottom'
+export type DropdownMonitor = 'cursor' | 'primary'
 
 export interface Config {
   hotkey: string
@@ -36,20 +39,27 @@ export interface Config {
   fontWeight: number
   letterSpacing: number
   padding: number
+  backgroundImage: string
+  backgroundBlur: number
+  backgroundDim: number
   opacity: number
   acrylic: boolean
   fontFamily: string
   fontSize: number
   lineHeight: number
+  scrollback: number
   widthPct: number
   heightPct: number
   animationMs: number
   hideOnBlur: boolean
   startWithWindows: boolean
+  restoreSession: boolean
+  dropdownEdge: DropdownEdge
+  dropdownMonitor: DropdownMonitor
 }
 
 export const DEFAULT_CONFIG: Config = {
-  hotkey: 'CommandOrControl+`',
+  hotkey: 'F12',
   defaultProfileId: '',
   profiles: [],
   keybindings: {
@@ -59,6 +69,7 @@ export const DEFAULT_CONFIG: Config = {
     prevTab: 'Ctrl+Shift+Tab',
     splitRight: 'Ctrl+Shift+D',
     splitDown: 'Ctrl+Shift+S',
+    zoomPane: 'Ctrl+Shift+Z',
     focusLeft: 'Alt+ArrowLeft',
     focusRight: 'Alt+ArrowRight',
     focusUp: 'Alt+ArrowUp',
@@ -69,6 +80,9 @@ export const DEFAULT_CONFIG: Config = {
     fontBigger: 'Ctrl+=',
     fontSmaller: 'Ctrl+-',
     fontReset: 'Ctrl+0',
+    clearBuffer: 'Ctrl+Shift+K',
+    resetTerminal: 'Ctrl+Shift+R',
+    commandPalette: 'Ctrl+Shift+P',
     settings: 'Ctrl+Shift+A'
   },
   theme: 'dracula',
@@ -79,16 +93,23 @@ export const DEFAULT_CONFIG: Config = {
   fontWeight: 400,
   letterSpacing: 0,
   padding: 6,
+  backgroundImage: '',
+  backgroundBlur: 0,
+  backgroundDim: 0.4,
   opacity: 0.9,
   acrylic: false,
   fontFamily: 'Cascadia Mono, Consolas, monospace',
   fontSize: 14,
   lineHeight: 1.2,
+  scrollback: 10000,
   widthPct: 100,
-  heightPct: 45,
+  heightPct: 100,
   animationMs: 150,
   hideOnBlur: true,
-  startWithWindows: true
+  startWithWindows: true,
+  restoreSession: true,
+  dropdownEdge: 'top',
+  dropdownMonitor: 'cursor'
 }
 
 export function isProfile(v: unknown): v is Profile {
@@ -164,15 +185,22 @@ export function mergeConfig(raw: unknown): Config {
     fontWeight: num(r.fontWeight, d.fontWeight, 100, 900),
     letterSpacing: num(r.letterSpacing, d.letterSpacing, -2, 4),
     padding: num(r.padding, d.padding, 0, 24),
+    backgroundImage: typeof r.backgroundImage === 'string' ? r.backgroundImage : d.backgroundImage,
+    backgroundBlur: num(r.backgroundBlur, d.backgroundBlur, 0, 40),
+    backgroundDim: num(r.backgroundDim, d.backgroundDim, 0, 0.9),
     opacity: num(r.opacity, d.opacity, 0.3, 1),
     acrylic: bool(r.acrylic, d.acrylic),
     fontFamily: str(r.fontFamily, d.fontFamily),
     fontSize: num(r.fontSize, d.fontSize, 6, 40),
     lineHeight: num(r.lineHeight, d.lineHeight, 1, 2),
+    scrollback: num(r.scrollback, d.scrollback, 100, 200000),
     widthPct: num(r.widthPct, d.widthPct, 20, 100),
     heightPct: num(r.heightPct, d.heightPct, 20, 100),
     animationMs: num(r.animationMs, d.animationMs, 0, 1000),
     hideOnBlur: bool(r.hideOnBlur, d.hideOnBlur),
-    startWithWindows: bool(r.startWithWindows, d.startWithWindows)
+    startWithWindows: bool(r.startWithWindows, d.startWithWindows),
+    restoreSession: bool(r.restoreSession, d.restoreSession),
+    dropdownEdge: oneOf(r.dropdownEdge, ['top', 'bottom'] as const, d.dropdownEdge),
+    dropdownMonitor: oneOf(r.dropdownMonitor, ['cursor', 'primary'] as const, d.dropdownMonitor)
   }
 }

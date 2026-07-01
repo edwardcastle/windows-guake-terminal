@@ -3,7 +3,7 @@ import { ACTIONS } from '../shared/config'
 import type { TerminalTheme } from '../shared/theme'
 import {
   BUILTIN_THEMES, THEME_COLOR_KEYS,
-  isTerminalTheme, isHexColor, parseHex, toHex, resolveTheme
+  isHexColor, parseHex, toHex, resolveTheme, adaptTheme
 } from '../shared/theme'
 
 type Patch = (patch: Partial<Config>) => void
@@ -24,6 +24,20 @@ function fullHex(v: string): string {
   return isHexColor(v) ? toHex(parseHex(v)) : '#000000'
 }
 
+// Build an Electron-accelerator string (e.g. "Ctrl+Shift+D") from a keydown,
+// compatible with keys.ts parseCombo. Returns null while only modifiers are held.
+function formatAccelerator(e: KeyboardEvent): string | null {
+  if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return null
+  const mods: string[] = []
+  if (e.ctrlKey) mods.push('Ctrl')
+  if (e.altKey) mods.push('Alt')
+  if (e.shiftKey) mods.push('Shift')
+  let key = e.key
+  if (key === ' ') key = 'Space'
+  else if (key.length === 1) key = key.toUpperCase()
+  return [...mods, key].join('+')
+}
+
 function makeButton(text: string, onClick: () => void): HTMLButtonElement {
   const b = document.createElement('button')
   b.type = 'button'
@@ -39,6 +53,7 @@ export class SettingsUI {
   private nav = document.createElement('div')
   private content = document.createElement('div')
   private active: Category = 'Appearance'
+  private localFonts: string[] | null = null
 
   constructor(
     parent: HTMLElement,
@@ -74,7 +89,10 @@ export class SettingsUI {
     this.nav.className = 'settings-nav'
     this.content.className = 'settings-content'
     body.append(this.nav, this.content)
-    this.dialog.append(head, body)
+    const foot = document.createElement('div')
+    foot.className = 'settings-foot'
+    foot.textContent = `quake-term v${window.api.version}`
+    this.dialog.append(head, body, foot)
     this.el.appendChild(this.dialog)
     parent.appendChild(this.el)
   }
@@ -241,6 +259,26 @@ export class SettingsUI {
       this.colorField('Accent color', cfg.accent, (v) => this.patch({ accent: v }))
     }
 
+    this.sectionTitle('Background image')
+    const bg = document.createElement('div')
+    bg.className = 'bg-image-control'
+    const bgPath = document.createElement('input')
+    bgPath.type = 'text'
+    bgPath.placeholder = 'Image path…'
+    bgPath.value = cfg.backgroundImage
+    bgPath.addEventListener('change', () => this.patch({ backgroundImage: bgPath.value.trim() }))
+    bg.append(bgPath, makeButton('Browse…', () => {
+      void window.api.pickImage().then((p) => { if (p) this.patch({ backgroundImage: p }) })
+    }))
+    if (cfg.backgroundImage) {
+      bg.appendChild(makeButton('Clear', () => this.patch({ backgroundImage: '' })))
+    }
+    this.fieldRow('Image', bg)
+    if (cfg.backgroundImage) {
+      this.sliderField('Dim', cfg.backgroundDim, 0, 0.9, 0.05, (v) => `${Math.round(v * 100)}%`, (v) => this.patch({ backgroundDim: v }))
+      this.sliderField('Blur', cfg.backgroundBlur, 0, 40, 1, (v) => `${v}px`, (v) => this.patch({ backgroundBlur: v }))
+    }
+
     this.sectionTitle('Cursor')
     this.selectField('Style', [
       { value: 'block', text: 'Block' },
@@ -263,6 +301,7 @@ export class SettingsUI {
       preview.appendChild(span)
     }
     this.content.appendChild(preview)
+    this.content.appendChild(this.themeSample(theme))
 
     if (isCustom) {
       this.textField('Theme name', name, (v) => this.renameTheme(cfg, name, v.trim()))
@@ -288,16 +327,19 @@ export class SettingsUI {
     this.content.appendChild(actions)
 
     const ta = document.createElement('textarea')
-    ta.placeholder = 'Paste a complete theme JSON object…'
+    ta.placeholder = 'Paste a quake-term or Windows Terminal theme JSON…'
     const err = document.createElement('div')
     err.className = 'editor-error'
     importArea.append(ta, makeButton('Import as custom theme', () => {
       err.textContent = ''
       let parsed: unknown
       try { parsed = JSON.parse(ta.value) } catch { err.textContent = 'Invalid JSON'; return }
-      if (!isTerminalTheme(parsed)) { err.textContent = 'Not a complete theme (missing colors)'; return }
-      const newName = this.uniqueThemeName(cfg, 'imported')
-      this.patch({ customThemes: { ...cfg.customThemes, [newName]: parsed }, theme: newName })
+      const theme = adaptTheme(parsed)
+      if (!theme) { err.textContent = 'Not a recognized theme (quake-term or Windows Terminal JSON)'; return }
+      const rawName = (parsed as { name?: unknown }).name
+      const base = typeof rawName === 'string' && rawName ? rawName : 'imported'
+      const newName = this.uniqueThemeName(cfg, base)
+      this.patch({ customThemes: { ...cfg.customThemes, [newName]: theme }, theme: newName })
     }), err)
     this.content.appendChild(importArea)
 
@@ -348,15 +390,132 @@ export class SettingsUI {
     this.patch({ customThemes: themes, theme: cfg.theme === name ? 'dracula' : cfg.theme, profiles })
   }
 
+  private themeSample(theme: TerminalTheme): HTMLElement {
+    const box = document.createElement('div')
+    box.className = 'theme-sample'
+    box.style.background = theme.background
+    box.style.color = theme.foreground
+    const span = (text: string, color?: string, bg?: string): HTMLSpanElement => {
+      const s = document.createElement('span')
+      s.textContent = text
+      if (color) s.style.color = color
+      if (bg) s.style.background = bg
+      return s
+    }
+    const l1 = document.createElement('div')
+    l1.append(
+      span('user', theme.green), span('@'), span('host', theme.green), span(':'),
+      span('~/project', theme.blue), span('$ '), span('npm run build')
+    )
+    const l2 = document.createElement('div')
+    l2.append(
+      span('ok', theme.green), span('  '), span('warn', theme.yellow), span('  '),
+      span('error', theme.red), span('  '), span('info', theme.cyan)
+    )
+    const l3 = document.createElement('div')
+    l3.append(span('selected', theme.foreground, theme.selectionBackground), span(' '), span('▏', theme.cursor))
+    const ansi = document.createElement('div')
+    ansi.className = 'theme-sample-ansi'
+    for (const k of THEME_COLOR_KEYS) {
+      if (k === 'background' || k === 'foreground' || k === 'cursor' ||
+          k === 'cursorAccent' || k === 'selectionBackground') continue
+      ansi.append(span('▆', theme[k]))
+    }
+    box.append(l1, l2, l3, ansi)
+    return box
+  }
+
+  private fontField(cfg: Config): void {
+    const curated = [
+      'Cascadia Mono', 'Cascadia Code', 'Consolas', 'Fira Code', 'JetBrains Mono',
+      'Source Code Pro', 'Hack', 'Menlo', 'Monaco', 'Ubuntu Mono',
+      'DejaVu Sans Mono', 'Roboto Mono', 'IBM Plex Mono', 'Courier New'
+    ]
+    const CUSTOM = ' '
+    const wrap = document.createElement('div')
+    wrap.className = 'font-field'
+    const select = document.createElement('select')
+    const custom = document.createElement('input')
+    custom.type = 'text'
+    custom.placeholder = 'Custom font family or stack…'
+    custom.value = cfg.fontFamily
+    const specimen = document.createElement('div')
+    specimen.className = 'font-specimen'
+    specimen.textContent = 'The quick brown fox  0123  => != -> =='
+
+    const paint = (value: string): void => {
+      specimen.style.fontFamily = value
+      specimen.style.fontSize = `${cfg.fontSize}px`
+      specimen.style.fontWeight = String(cfg.fontWeight)
+    }
+
+    const populate = (families: string[]): void => {
+      const current = cfg.fontFamily
+      select.textContent = ''
+      // Show the current value (e.g. a custom stack) as a selected option so the
+      // custom text box stays hidden until the user picks "Custom…".
+      if (current && !families.includes(current)) {
+        const o = document.createElement('option')
+        o.value = current
+        o.textContent = current
+        o.selected = true
+        select.appendChild(o)
+      }
+      for (const f of families) {
+        const o = document.createElement('option')
+        o.value = f
+        o.textContent = f
+        o.selected = f === current
+        select.appendChild(o)
+      }
+      const c = document.createElement('option')
+      c.value = CUSTOM
+      c.textContent = 'Custom…'
+      select.appendChild(c)
+      custom.classList.add('hidden')
+    }
+
+    populate(this.localFonts && this.localFonts.length ? this.localFonts : curated)
+    paint(cfg.fontFamily)
+
+    select.addEventListener('change', () => {
+      if (select.value === CUSTOM) {
+        custom.classList.remove('hidden')
+        custom.focus()
+      } else {
+        custom.classList.add('hidden')
+        paint(select.value)
+        this.patch({ fontFamily: select.value })
+      }
+    })
+    custom.addEventListener('input', () => paint(custom.value))
+    custom.addEventListener('change', () => this.patch({ fontFamily: custom.value }))
+
+    // Load the system's installed fonts once (needs Local Font Access), then the
+    // dropdown lists them instead of the curated fallback.
+    const q = (window as unknown as { queryLocalFonts?: () => Promise<{ family: string }[]> }).queryLocalFonts
+    if (this.localFonts === null && q) {
+      q().then((fonts) => {
+        this.localFonts = [...new Set(fonts.map((f) => f.family))].sort()
+        if (this.localFonts.length) populate(this.localFonts)
+      }).catch(() => { this.localFonts = [] })
+    }
+
+    wrap.append(select, custom, specimen)
+    this.fieldRow('Family', wrap)
+  }
+
   private renderTerminal(cfg: Config): void {
     this.sectionTitle('Font')
-    this.textField('Family', cfg.fontFamily, (v) => this.patch({ fontFamily: v }))
+    this.fontField(cfg)
     this.sliderField('Size', cfg.fontSize, 6, 40, 1, (v) => `${v}px`, (v) => this.patch({ fontSize: v }))
     this.sliderField('Line height', cfg.lineHeight, 1, 2, 0.05, (v) => v.toFixed(2), (v) => this.patch({ lineHeight: v }))
     this.sliderField('Weight', cfg.fontWeight, 100, 900, 100, (v) => String(v), (v) => this.patch({ fontWeight: v }))
     this.sliderField('Letter spacing', cfg.letterSpacing, -2, 4, 0.5, (v) => `${v}px`, (v) => this.patch({ letterSpacing: v }))
     this.sectionTitle('Layout')
     this.sliderField('Padding', cfg.padding, 0, 24, 1, (v) => `${v}px`, (v) => this.patch({ padding: v }))
+    this.sectionTitle('Buffer')
+    this.sliderField('Scrollback', cfg.scrollback, 1000, 100000, 1000, (v) => `${Math.round(v / 1000)}k lines`, (v) => this.patch({ scrollback: v }))
   }
 
   private renderWindow(cfg: Config): void {
@@ -369,7 +528,17 @@ export class SettingsUI {
     this.sliderField('Width', cfg.widthPct, 20, 100, 5, (v) => `${v}%`, (v) => this.patch({ widthPct: v }))
     this.sliderField('Height', cfg.heightPct, 20, 100, 5, (v) => `${v}%`, (v) => this.patch({ heightPct: v }))
     this.sliderField('Animation', cfg.animationMs, 0, 1000, 25, (v) => `${v}ms`, (v) => this.patch({ animationMs: v }))
+    this.sectionTitle('Dropdown')
+    this.selectField('Edge', [
+      { value: 'top', text: 'Top' },
+      { value: 'bottom', text: 'Bottom' }
+    ], cfg.dropdownEdge, (v) => this.patch({ dropdownEdge: v as Config['dropdownEdge'] }))
+    this.selectField('Monitor', [
+      { value: 'cursor', text: "Cursor's screen" },
+      { value: 'primary', text: 'Primary' }
+    ], cfg.dropdownMonitor, (v) => this.patch({ dropdownMonitor: v as Config['dropdownMonitor'] }))
     this.sectionTitle('Behavior')
+    this.checkField('Restore tabs on launch', cfg.restoreSession, (v) => this.patch({ restoreSession: v }))
     this.checkField('Hide on focus loss', cfg.hideOnBlur, (v) => this.patch({ hideOnBlur: v }))
     this.checkField('Start with Windows', cfg.startWithWindows, (v) => this.patch({ startWithWindows: v }))
     this.textField('Toggle hotkey', cfg.hotkey, (v) => this.patch({ hotkey: v }))
@@ -404,10 +573,40 @@ export class SettingsUI {
   }
 
   private renderKeybindings(cfg: Config): void {
-    this.sectionTitle('Shortcuts (Electron accelerator strings)')
+    this.sectionTitle('Shortcuts — click a binding, then press the keys')
     for (const action of ACTIONS) {
-      this.textField(action, cfg.keybindings[action], (v) =>
-        this.patch({ keybindings: { ...cfg.keybindings, [action]: v } }))
+      const ctl = document.createElement('div')
+      ctl.className = 'keybind-control'
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'btn keybind-btn'
+      btn.textContent = cfg.keybindings[action] || '(unset)'
+      const warn = document.createElement('span')
+      warn.className = 'keybind-warn'
+      const dup = ACTIONS.find((a) => a !== action && cfg.keybindings[a] === cfg.keybindings[action])
+      if (dup) warn.textContent = `⚠ also ${dup}`
+      btn.addEventListener('click', () => {
+        btn.textContent = 'Press keys… (Esc to cancel)'
+        btn.classList.add('capturing')
+        const cleanup = (): void => window.removeEventListener('keydown', onKey, true)
+        const onKey = (e: KeyboardEvent): void => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (e.key === 'Escape') {
+            cleanup()
+            btn.classList.remove('capturing')
+            btn.textContent = cfg.keybindings[action] || '(unset)'
+            return
+          }
+          const accel = formatAccelerator(e)
+          if (!accel) return
+          cleanup()
+          this.patch({ keybindings: { ...this.getConfig().keybindings, [action]: accel } })
+        }
+        window.addEventListener('keydown', onKey, true)
+      })
+      ctl.append(btn, warn)
+      this.fieldRow(action, ctl)
     }
   }
 }

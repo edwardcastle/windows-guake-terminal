@@ -4,6 +4,7 @@ import type { Config } from '../shared/config'
 
 export class WindowManager {
   readonly win: BrowserWindow
+  modalOpen = false
   private animating = false
 
   constructor(private getConfig: () => Config) {
@@ -25,20 +26,39 @@ export class WindowManager {
       }
     })
     this.win.setAlwaysOnTop(true, 'screen-saver')
+    // The renderer only ever loads this app's own local content, so granting its
+    // permission requests (local-fonts for the font picker, clipboard, …) is safe.
+    this.win.webContents.session.setPermissionRequestHandler((_wc, _perm, cb) => cb(true))
+    this.win.webContents.session.setPermissionCheckHandler(() => true)
     this.win.on('blur', () => {
-      if (this.getConfig().hideOnBlur && !this.win.webContents.isDevToolsFocused()) {
+      if (this.getConfig().hideOnBlur && !this.modalOpen && !this.win.webContents.isDevToolsFocused()) {
         this.hide()
       }
     })
   }
 
-  private targetBounds(): { x: number; y: number; width: number; height: number } {
+  private targetBounds(
+    display: Electron.Display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  ): { x: number; y: number; width: number; height: number } {
     const cfg = this.getConfig()
-    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
     const wa = display.workArea
     const width = Math.round((wa.width * cfg.widthPct) / 100)
     const height = Math.round((wa.height * cfg.heightPct) / 100)
-    return { x: wa.x + Math.round((wa.width - width) / 2), y: wa.y, width, height }
+    const x = wa.x + Math.round((wa.width - width) / 2)
+    const y = cfg.dropdownEdge === 'bottom' ? wa.y + wa.height - height : wa.y
+    return { x, y, width, height }
+  }
+
+  private showDisplay(): Electron.Display {
+    return this.getConfig().dropdownMonitor === 'primary'
+      ? screen.getPrimaryDisplay()
+      : screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  }
+
+  // Off-screen parked Y for the slide animation: above the work area for a
+  // top-edge dropdown, below it for a bottom-edge one.
+  private offscreenY(b: { y: number; height: number }): number {
+    return this.getConfig().dropdownEdge === 'bottom' ? b.y + b.height : b.y - b.height
   }
 
   toggle(): void {
@@ -53,16 +73,17 @@ export class WindowManager {
       this.win.focus()
       return
     }
-    const b = this.targetBounds()
+    const b = this.targetBounds(this.showDisplay())
     const ms = this.getConfig().animationMs
     if (ms === 0) {
       this.win.setBounds(b)
       this.win.show()
       return
     }
-    this.win.setBounds({ ...b, y: b.y - b.height })
+    const start = this.offscreenY(b)
+    this.win.setBounds({ ...b, y: start })
     this.win.show()
-    this.animate(b.y - b.height, b.y, ms, (y) => this.win.setBounds({ ...b, y }))
+    this.animate(start, b.y, ms, (y) => this.win.setBounds({ ...b, y }))
   }
 
   hide(): void {
@@ -73,7 +94,7 @@ export class WindowManager {
       this.win.hide()
       return
     }
-    this.animate(b.y, b.y - b.height, ms, (y) => this.win.setBounds({ ...b, y }), () =>
+    this.animate(b.y, this.offscreenY(b), ms, (y) => this.win.setBounds({ ...b, y }), () =>
       this.win.hide()
     )
   }
@@ -109,6 +130,10 @@ export class WindowManager {
         // pre-Win11 — acrylic unsupported, opacity still applies
       }
     }
-    if (this.win.isVisible() && !this.animating) this.win.setBounds(this.targetBounds())
+    // Live appearance changes keep the window on its current display; only an
+    // explicit show() re-targets the display under the cursor.
+    if (this.win.isVisible() && !this.animating) {
+      this.win.setBounds(this.targetBounds(screen.getDisplayMatching(this.win.getBounds())))
+    }
   }
 }
