@@ -101,7 +101,7 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 }
 .tab-container { position: absolute; inset: 0; z-index: 1; }
 .tab-container.hidden { display: none; }
-.pane { position: absolute; padding: var(--term-padding); overflow: hidden; }
+.pane { position: absolute; padding: var(--term-padding); }
 .pane.active-pane { outline: 1px solid var(--ui-accent); outline-offset: -1px; }
 .xterm { height: 100%; }
 
