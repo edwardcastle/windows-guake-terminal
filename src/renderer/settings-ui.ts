@@ -33,6 +33,24 @@ function makeButton(text: string, onClick: () => void): HTMLButtonElement {
   return b
 }
 
+// TODO: replace with the real donation URL once the donate page is live.
+const DONATE_URL = 'https://example.com/donate'
+
+function makeCredit(): HTMLParagraphElement {
+  const c = document.createElement('p')
+  c.className = 'credit'
+  c.append('Developed by Eduardo Gonzalez Castillo — free for personal use only. If you like this work, you can ')
+  const link = document.createElement('a')
+  link.textContent = 'buy me a coffee'
+  link.href = '#'
+  link.addEventListener('click', (e) => {
+    e.preventDefault()
+    window.api.openExternal(DONATE_URL)
+  })
+  c.append(link, '.')
+  return c
+}
+
 export class SettingsUI {
   private el = document.createElement('div')
   private dialog = document.createElement('div')
@@ -74,7 +92,7 @@ export class SettingsUI {
     this.nav.className = 'settings-nav'
     this.content.className = 'settings-content'
     body.append(this.nav, this.content)
-    this.dialog.append(head, body)
+    this.dialog.append(head, makeCredit(), body)
     this.el.appendChild(this.dialog)
     parent.appendChild(this.el)
   }

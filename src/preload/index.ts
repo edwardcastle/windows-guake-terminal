@@ -18,7 +18,8 @@ const api = {
   getProfiles: () => ipcRenderer.invoke('profiles:get'),
   onOpenSettings: (cb: () => void) => ipcRenderer.on('ui:open-settings', () => cb()),
   hideWindow: () => ipcRenderer.send('window:hide'),
-  platform: process.platform
+  platform: process.platform,
+  openExternal: (url: string) => ipcRenderer.send('shell:open-external', url)
 }
 
 contextBridge.exposeInMainWorld('api', api)

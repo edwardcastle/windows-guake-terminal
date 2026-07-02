@@ -1,4 +1,4 @@
-import { app, globalShortcut, ipcMain, Menu, nativeImage, Tray } from 'electron'
+import { app, globalShortcut, ipcMain, Menu, nativeImage, shell, Tray } from 'electron'
 import path from 'node:path'
 import * as nodePty from 'node-pty'
 import { ConfigStore } from './config-store'
@@ -79,6 +79,9 @@ function registerIpc(): void {
     return c
   })
   ipcMain.on('window:hide', () => wm.hide())
+  ipcMain.on('shell:open-external', (_e, url: string) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url)
+  })
 }
 
 app.whenReady().then(() => {

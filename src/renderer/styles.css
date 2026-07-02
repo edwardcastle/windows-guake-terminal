@@ -159,6 +159,14 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 .settings-head h2 { font-size: 14px; color: var(--ui-accent); }
 .settings-head .close { cursor: pointer; opacity: 0.6; font-size: 15px; }
 .settings-head .close:hover { opacity: 1; }
+.settings-dialog .credit {
+  padding: 9px 16px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ui-muted);
+  border-bottom: 1px solid var(--ui-border);
+}
+.settings-dialog .credit a { color: var(--ui-accent); cursor: pointer; }
 .settings-body { display: flex; min-height: 0; flex: 1; }
 .settings-nav {
   flex: none;
