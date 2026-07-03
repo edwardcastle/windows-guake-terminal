@@ -54,5 +54,13 @@ export function detectProfiles(): Profile[] {
     profiles.push({ id: 'gitbash', name: 'Git Bash', exe: gitBash, args: ['--login', '-i'] })
   }
 
+  const msys2Zsh = [
+    'C:\\msys64\\usr\\bin\\zsh.exe',
+    'C:\\msys32\\usr\\bin\\zsh.exe'
+  ].find((p) => fs.existsSync(p))
+  if (msys2Zsh) {
+    profiles.push({ id: 'zsh-msys2', name: 'Zsh (MSYS2)', exe: msys2Zsh, args: ['--login', '-i'] })
+  }
+
   return profiles
 }
