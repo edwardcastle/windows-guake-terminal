@@ -33,8 +33,9 @@ function makeButton(text: string, onClick: () => void): HTMLButtonElement {
   return b
 }
 
-// TODO: replace with the real donation URL once the donate page is live.
-const DONATE_URL = 'https://example.com/donate'
+// Ko-fi tip jar (0% fee on one-time tips). If a different handle is
+// registered at ko-fi.com, update this single constant.
+const DONATE_URL = 'https://ko-fi.com/edwardcastle'
 
 function makeCredit(): HTMLParagraphElement {
   const c = document.createElement('p')

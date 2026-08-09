@@ -1,0 +1,4 @@
+# Shows a "Sponsor" button on the GitHub repo.
+# ko_fi renders once the page exists; github renders once GitHub Sponsors is enabled.
+github: [edwardcastle]
+ko_fi: edwardcastle
