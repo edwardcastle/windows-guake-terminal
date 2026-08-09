@@ -101,9 +101,14 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 }
 .tab-container { position: absolute; inset: 0; z-index: 1; }
 .tab-container.hidden { display: none; }
-.pane { position: absolute; padding: var(--term-padding); }
+/* The padding lives on .xterm, not .pane: FitAddon derives the row count from
+   the parent's computed height minus the *terminal element's* own padding. With
+   box-sizing:border-box that parent height is the full border box, so padding on
+   .pane is invisible to the fit — it would size the grid to the unpadded pane and
+   overflow the bottom by 2x the padding, eating the gap under the last row. */
+.pane { position: absolute; }
 .pane.active-pane { outline: 1px solid var(--ui-accent); outline-offset: -1px; }
-.xterm { height: 100%; }
+.xterm { height: 100%; padding: var(--term-padding); }
 
 .splitter { position: absolute; z-index: 10; }
 .splitter.row { cursor: ew-resize; }
