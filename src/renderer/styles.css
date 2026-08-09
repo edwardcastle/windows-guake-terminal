@@ -359,9 +359,44 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 .keybind-btn.capturing { border-color: var(--ui-accent); color: var(--ui-accent); }
 .keybind-warn { flex: none; color: #e0af68; font-size: 11px; }
 
-.settings-content::-webkit-scrollbar { width: 10px; }
-.settings-content::-webkit-scrollbar-thumb { background: var(--ui-border); border-radius: 6px; }
-.settings-content::-webkit-scrollbar-track { background: transparent; }
+/* ---- scrollbars ---- */
+/* One overlay-style bar for every scrolling surface: the terminal viewport,
+   the settings pane and the command palette. Tokens live here rather than in
+   the :root block at the top because applyAppearance() does not set them --
+   they are derived from the theme's foreground and accent.
+
+   Deliberately no scrollbar-width/scrollbar-color: Chromium gives the standard
+   properties precedence and they would drop everything below. */
+/* Built on --ui-muted rather than --ui-fg or --ui-border. uiPalette() floors
+   it at 3:1 against the chrome, so the thumb carries the same visual weight on
+   every theme (2.0-3.4:1 at rest). --ui-fg swings from 1.9:1 on solarized-light
+   to 4.6:1 on monokai, and --ui-border never clears 1.7:1 anywhere -- which is
+   why the old settings-pane thumb was so hard to find. */
+:root {
+  --sb-size: 11px;
+  --sb-rest: color-mix(in srgb, var(--ui-muted) 70%, transparent);
+  --sb-hover: var(--ui-muted);
+  --sb-drag: color-mix(in srgb, var(--ui-accent) 80%, transparent);
+}
+*::-webkit-scrollbar { width: var(--sb-size); height: var(--sb-size); }
+/* Transparent track, so the gutter xterm always reserves reads as empty space
+   instead of a groove down the side of the output. */
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+*::-webkit-scrollbar-button { display: none; }
+*::-webkit-scrollbar-thumb {
+  /* The border is transparent and clipped away, so the bar keeps an 11px hit
+     target while the visible pill is only 5px. */
+  background-color: var(--sb-rest);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  /* A thousand lines of scrollback shrink the thumb to a few pixels. */
+  min-height: 28px;
+}
+/* Thickens to 7px as you reach for it; the accent appears only while dragging. */
+*::-webkit-scrollbar-thumb:hover { background-color: var(--sb-hover); border-width: 2px; }
+*::-webkit-scrollbar-thumb:active { background-color: var(--sb-drag); border-width: 2px; }
 
 #tab-menu {
   position: absolute;
