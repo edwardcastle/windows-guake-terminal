@@ -1,8 +1,8 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 const api = {
-  spawn: (paneId: string, profileId: string, cols: number, rows: number) =>
-    ipcRenderer.invoke('pty:spawn', paneId, profileId, cols, rows) as Promise<string | null>,
+  spawn: (paneId: string, profileId: string, cols: number, rows: number, cwd?: string) =>
+    ipcRenderer.invoke('pty:spawn', paneId, profileId, cols, rows, cwd) as Promise<string | null>,
   write: (paneId: string, data: string) => ipcRenderer.send('pty:write', paneId, data),
   resize: (paneId: string, cols: number, rows: number) =>
     ipcRenderer.send('pty:resize', paneId, cols, rows),
@@ -19,7 +19,13 @@ const api = {
   onOpenSettings: (cb: () => void) => ipcRenderer.on('ui:open-settings', () => cb()),
   hideWindow: () => ipcRenderer.send('window:hide'),
   platform: process.platform,
-  openExternal: (url: string) => ipcRenderer.send('shell:open-external', url)
+  version: ipcRenderer.sendSync('app:version') as string,
+  openExternal: (url: string) => ipcRenderer.send('shell:open-external', url),
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
+  loadImage: (path: string) => ipcRenderer.invoke('image:load', path) as Promise<string | null>,
+  pickImage: () => ipcRenderer.invoke('dialog:pickImage') as Promise<string | null>,
+  loadSession: () => ipcRenderer.invoke('session:load') as Promise<unknown>,
+  saveSession: (data: unknown) => ipcRenderer.send('session:save', data)
 }
 
 contextBridge.exposeInMainWorld('api', api)

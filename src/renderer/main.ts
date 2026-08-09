@@ -8,7 +8,10 @@ import { TermPane } from './term-pane'
 import { renderTabBar } from './tab-bar'
 import { FindBar } from './find-bar'
 import { SettingsUI } from './settings-ui'
-import { uiPalette, resolveTheme } from '../shared/theme'
+import { CommandPalette } from './command-palette'
+import type { Command } from './command-palette'
+import { uiPalette, resolveTheme, BUILTIN_THEMES } from '../shared/theme'
+import { ACTIONS } from '../shared/config'
 import { displayTitle, displayColor } from '../shared/tab-label'
 
 interface Tab {
@@ -16,6 +19,7 @@ interface Tab {
   title: string
   customTitle?: string
   customColor?: string
+  zoomedPane?: string
   root: PaneNode
   activePane: string
   container: HTMLDivElement
@@ -39,6 +43,25 @@ const settings = new SettingsUI(
   (patch) => void window.api.setConfig(patch),
   () => activePane()?.term.focus()
 )
+const palette = new CommandPalette(document.body, buildCommands, () => activePane()?.term.focus())
+
+function humanize(s: string): string {
+  return s.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
+}
+
+function buildCommands(): Command[] {
+  const cmds: Command[] = []
+  for (const action of ACTIONS) {
+    cmds.push({ id: `action:${action}`, label: humanize(action), hint: config.keybindings[action], run: () => void runAction(action) })
+  }
+  for (const p of profiles) {
+    cmds.push({ id: `newtab:${p.id}`, label: `New tab: ${p.name}`, run: () => newTab(p.id) })
+  }
+  for (const name of [...Object.keys(BUILTIN_THEMES), ...Object.keys(config.customThemes)]) {
+    cmds.push({ id: `theme:${name}`, label: `Theme: ${name}`, run: () => void window.api.setConfig({ theme: name }) })
+  }
+  return cmds
+}
 
 function applyAppearance(cfg: Config): void {
   const pal = uiPalette(resolveTheme(cfg.theme, cfg.customThemes), cfg.accent)
@@ -51,6 +74,42 @@ function applyAppearance(cfg: Config): void {
   s.setProperty('--ui-muted', pal.uiMuted)
   s.setProperty('--term-padding', `${cfg.padding}px`)
   s.setProperty('--win-opacity', String(cfg.opacity))
+  applyBackground(cfg)
+}
+
+let bgLayer: HTMLDivElement | undefined
+let bgLoadedPath = ''
+let bgDataUrl = ''
+
+function applyBackground(cfg: Config): void {
+  if (!bgLayer) {
+    bgLayer = document.createElement('div')
+    bgLayer.id = 'bg-layer'
+    panesEl.prepend(bgLayer)
+  }
+  const layer = bgLayer
+  if (!cfg.backgroundImage) {
+    layer.style.display = 'none'
+    bgLoadedPath = ''
+    bgDataUrl = ''
+    return
+  }
+  const paint = (dataUrl: string): void => {
+    layer.style.display = ''
+    layer.style.backgroundImage =
+      `linear-gradient(rgba(0,0,0,${cfg.backgroundDim}), rgba(0,0,0,${cfg.backgroundDim})), url("${dataUrl}")`
+    layer.style.filter = `blur(${cfg.backgroundBlur}px)`
+  }
+  if (cfg.backgroundImage === bgLoadedPath && bgDataUrl) {
+    paint(bgDataUrl) // image cached; dim/blur may have changed
+    return
+  }
+  void window.api.loadImage(cfg.backgroundImage).then((url) => {
+    if (!url) { layer.style.display = 'none'; return }
+    bgLoadedPath = cfg.backgroundImage
+    bgDataUrl = url
+    paint(url)
+  })
 }
 
 function activeTab(): Tab | undefined { return tabs[activeTabIdx] }
@@ -65,12 +124,21 @@ function focusPane(paneId: string): void {
   tab.activePane = paneId
   render()
 }
+
+function moveTab(from: number, to: number): void {
+  if (from === to || from < 0 || to < 0 || from >= tabs.length || to >= tabs.length) return
+  const activeId = tabs[activeTabIdx]?.id
+  const [moved] = tabs.splice(from, 1)
+  tabs.splice(to, 0, moved)
+  activeTabIdx = Math.max(0, tabs.findIndex((t) => t.id === activeId))
+  render()
+}
 function activePane(): TermPane | undefined {
   const t = activeTab()
   return t ? panes.get(t.activePane) : undefined
 }
 
-function createPane(profileId: string): TermPane {
+function createPane(profileId: string, cwd?: string): TermPane {
   const profile = profiles.find((p) => p.id === profileId)
   const pane = new TermPane(uid('p'), profile, config)
   panes.set(pane.id, pane)
@@ -81,7 +149,7 @@ function createPane(profileId: string): TermPane {
       render()
     }
   }
-  void pane.spawnShell()
+  void pane.spawnShell(cwd)
   return pane
 }
 
@@ -91,7 +159,7 @@ function profileName(id: string): string {
 
 export function newTab(profileId?: string): void {
   const pid = profileId || config.defaultProfileId || profiles[0].id
-  const pane = createPane(pid)
+  const pane = createPane(pid, activePane()?.cwd)
   const container = document.createElement('div')
   container.className = 'tab-container'
   container.appendChild(pane.el)
@@ -144,7 +212,8 @@ export function render(): void {
       newTab,
       openSettings: () => settings.open(),
       rename: (i, name) => { const t = tabs[i]; if (t) { t.customTitle = name.trim() || undefined; render() } },
-      setColor: (i, color) => { const t = tabs[i]; if (t) { t.customColor = color || undefined; render() } }
+      setColor: (i, color) => { const t = tabs[i]; if (t) { t.customColor = color || undefined; render() } },
+      moveTab
     }
   )
   tabs.forEach((tab, i) => {
@@ -152,15 +221,91 @@ export function render(): void {
   })
   const tab = activeTab()
   if (tab) {
-    renderPanes(tab.container, tab.root, panes, tab.activePane,
+    const zoomed = tab.zoomedPane && leaves(tab.root).includes(tab.zoomedPane)
+    const root = zoomed ? leaf(tab.zoomedPane as string) : tab.root
+    renderPanes(tab.container, root, panes, tab.activePane,
       (splitId, ratio) => {
         tab.root = setRatio(tab.root, splitId, ratio)
         render()
       },
       focusPane
     )
-    if (!findBar.isOpen() && !settings.isOpen()) panes.get(tab.activePane)?.term.focus()
+    if (!findBar.isOpen() && !settings.isOpen() && !palette.isOpen()) panes.get(tab.activePane)?.term.focus()
   }
+  saveSession()
+}
+
+interface SessionNode {
+  type: 'leaf' | 'split'
+  profileId?: string
+  dir?: 'row' | 'col'
+  ratio?: number
+  a?: SessionNode
+  b?: SessionNode
+}
+interface SessionTab { layout: SessionNode; customTitle?: string; customColor?: string }
+interface Session { tabs: SessionTab[]; activeTabIdx: number }
+
+function serializeNode(n: PaneNode): SessionNode {
+  if (n.type === 'leaf') return { type: 'leaf', profileId: panes.get(n.id)?.profileId ?? '' }
+  return { type: 'split', dir: n.dir, ratio: n.ratio, a: serializeNode(n.a), b: serializeNode(n.b) }
+}
+
+function serializeSession(): Session {
+  return {
+    tabs: tabs.map((t) => ({ layout: serializeNode(t.root), customTitle: t.customTitle, customColor: t.customColor })),
+    activeTabIdx
+  }
+}
+
+let sessionTimer: ReturnType<typeof setTimeout> | undefined
+function saveSession(): void {
+  if (!config?.restoreSession) return
+  if (sessionTimer) clearTimeout(sessionTimer)
+  sessionTimer = setTimeout(() => window.api.saveSession(serializeSession()), 300)
+}
+
+function restoreNode(sn: SessionNode): PaneNode {
+  if (sn.type === 'split' && sn.a && sn.b) {
+    return {
+      type: 'split', id: uid('s'),
+      dir: sn.dir === 'col' ? 'col' : 'row',
+      ratio: typeof sn.ratio === 'number' ? sn.ratio : 0.5,
+      a: restoreNode(sn.a), b: restoreNode(sn.b)
+    }
+  }
+  const pid = profiles.find((p) => p.id === sn.profileId)
+    ? (sn.profileId as string)
+    : config.defaultProfileId || profiles[0]?.id || ''
+  return leaf(createPane(pid).id)
+}
+
+function restoreSession(raw: unknown): boolean {
+  const session = raw as Session | null
+  if (!session || !Array.isArray(session.tabs) || !session.tabs.length) return false
+  for (const st of session.tabs) {
+    if (!st || !st.layout) continue
+    const container = document.createElement('div')
+    container.className = 'tab-container'
+    let root: PaneNode
+    try { root = restoreNode(st.layout) } catch { continue }
+    panesEl.appendChild(container)
+    for (const id of leaves(root)) { const p = panes.get(id); if (p) container.appendChild(p.el) }
+    const first = leaves(root)[0]
+    tabs.push({
+      id: uid('t'),
+      title: profileName(panes.get(first)?.profileId ?? ''),
+      customTitle: typeof st.customTitle === 'string' ? st.customTitle : undefined,
+      customColor: typeof st.customColor === 'string' ? st.customColor : undefined,
+      root,
+      activePane: first,
+      container
+    })
+  }
+  if (!tabs.length) return false
+  activeTabIdx = Math.min(Math.max(0, session.activeTabIdx ?? 0), tabs.length - 1)
+  render()
+  return true
 }
 
 async function boot(): Promise<void> {
@@ -180,7 +325,8 @@ async function boot(): Promise<void> {
   })
   window.api.onOpenSettings(() => settings.open())
   new ResizeObserver(() => render()).observe(panesEl)
-  newTab()
+  const restored = config.restoreSession && restoreSession(await window.api.loadSession())
+  if (!restored) newTab()
 }
 
 void boot()
@@ -189,7 +335,7 @@ function splitActive(dir: 'row' | 'col'): void {
   const tab = activeTab()
   if (!tab) return
   const current = panes.get(tab.activePane)
-  const pane = createPane(current?.profileId || config.defaultProfileId || profiles[0].id)
+  const pane = createPane(current?.profileId || config.defaultProfileId || profiles[0].id, current?.cwd)
   tab.root = splitPane(tab.root, tab.activePane, dir, pane.id, uid('s'))
   tab.activePane = pane.id
   render()
@@ -208,6 +354,13 @@ function closeActivePane(): void {
   }
   tab.root = root
   tab.activePane = leaves(root)[0]
+  render()
+}
+
+function toggleZoom(): void {
+  const tab = activeTab()
+  if (!tab || leaves(tab.root).length < 2) return
+  tab.zoomedPane = tab.zoomedPane ? undefined : tab.activePane
   render()
 }
 
@@ -236,6 +389,7 @@ async function runAction(action: string): Promise<void> {
     case 'prevTab': nextTab(-1); break
     case 'splitRight': splitActive('row'); break
     case 'splitDown': splitActive('col'); break
+    case 'zoomPane': toggleZoom(); break
     case 'focusLeft': focusDirection('left'); break
     case 'focusRight': focusDirection('right'); break
     case 'focusUp': focusDirection('up'); break
@@ -246,13 +400,15 @@ async function runAction(action: string): Promise<void> {
       break
     }
     case 'paste': {
-      const text = await navigator.clipboard.readText()
-      if (text && pane && !pane.exited) window.api.write(pane.id, text)
+      await pane?.paste()
       break
     }
     case 'fontBigger': changeFontSize(1); break
     case 'fontSmaller': changeFontSize(-1); break
     case 'fontReset': changeFontSize(null); break
+    case 'clearBuffer': pane?.term.clear(); break
+    case 'resetTerminal': pane?.term.reset(); break
+    case 'commandPalette': palette.toggle(); break
     case 'find': {
       if (pane) findBar.open(pane)
       break
@@ -266,7 +422,7 @@ window.addEventListener(
   (e) => {
     if (!config) return
     const ae = document.activeElement as HTMLElement | null
-    if (ae && ae.closest && ae.closest('#settings, #findbar')) return
+    if (ae && ae.closest && ae.closest('#settings, #findbar, #command-palette')) return
     const action = matchAction(config.keybindings, e)
     if (action) {
       e.preventDefault()

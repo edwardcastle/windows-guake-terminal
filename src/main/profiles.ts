@@ -32,10 +32,13 @@ export function detectProfiles(): Profile[] {
     'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
     'C:\\Program Files (x86)\\PowerShell\\7\\pwsh.exe'
   ].find((p) => fs.existsSync(p))
-  if (pwsh) profiles.push({ id: 'pwsh', name: 'PowerShell 7', exe: pwsh, args: ['-NoLogo'] })
+  // -ExecutionPolicy Bypass (session-scoped, not system-wide) so venv
+  // Activate.ps1 and other local scripts run without the default policy blocking.
+  const psArgs = ['-NoLogo', '-ExecutionPolicy', 'Bypass']
+  if (pwsh) profiles.push({ id: 'pwsh', name: 'PowerShell 7', exe: pwsh, args: psArgs })
 
   profiles.push({
-    id: 'powershell', name: 'Windows PowerShell', exe: 'powershell.exe', args: ['-NoLogo']
+    id: 'powershell', name: 'Windows PowerShell', exe: 'powershell.exe', args: psArgs
   })
   profiles.push({ id: 'cmd', name: 'cmd', exe: process.env.ComSpec ?? 'cmd.exe', args: [] })
 
@@ -49,6 +52,14 @@ export function detectProfiles(): Profile[] {
   ].find((p) => p && fs.existsSync(p))
   if (gitBash) {
     profiles.push({ id: 'gitbash', name: 'Git Bash', exe: gitBash, args: ['--login', '-i'] })
+  }
+
+  const msys2Zsh = [
+    'C:\\msys64\\usr\\bin\\zsh.exe',
+    'C:\\msys32\\usr\\bin\\zsh.exe'
+  ].find((p) => fs.existsSync(p))
+  if (msys2Zsh) {
+    profiles.push({ id: 'zsh-msys2', name: 'Zsh (MSYS2)', exe: msys2Zsh, args: ['--login', '-i'] })
   }
 
   return profiles

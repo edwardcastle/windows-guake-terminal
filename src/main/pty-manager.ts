@@ -28,13 +28,14 @@ export class PtyManager {
     cols: number,
     rows: number,
     onData: (d: string) => void,
-    onExit: (code: number) => void
+    onExit: (code: number) => void,
+    cwd?: string
   ): void {
     this.kill(id)
     const pty = this.spawnFn(profile.exe, profile.args, {
       cols,
       rows,
-      cwd: profile.cwd || process.env.USERPROFILE || process.env.HOME || (process.platform === 'win32' ? 'C:\\' : '/'),
+      cwd: cwd || profile.cwd || process.env.USERPROFILE || process.env.HOME || (process.platform === 'win32' ? 'C:\\' : '/'),
       env: process.env
     })
     pty.onData(onData)

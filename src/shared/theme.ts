@@ -166,6 +166,33 @@ export function resolveTheme(
   return custom[name] ?? BUILTIN_THEMES[name] ?? BUILTIN_THEMES.dracula
 }
 
+// Source key for each TerminalTheme field in a Windows Terminal color scheme
+// (which uses purple/brightPurple and cursorColor, and has no cursorAccent).
+const WT_KEYS: Record<keyof TerminalTheme, string> = {
+  background: 'background', foreground: 'foreground',
+  cursor: 'cursorColor', cursorAccent: 'background', selectionBackground: 'selectionBackground',
+  black: 'black', red: 'red', green: 'green', yellow: 'yellow', blue: 'blue',
+  magenta: 'purple', cyan: 'cyan', white: 'white',
+  brightBlack: 'brightBlack', brightRed: 'brightRed', brightGreen: 'brightGreen',
+  brightYellow: 'brightYellow', brightBlue: 'brightBlue', brightMagenta: 'brightPurple',
+  brightCyan: 'brightCyan', brightWhite: 'brightWhite'
+}
+
+// Accept either a complete quake-term theme or a Windows Terminal scheme, else null.
+export function adaptTheme(v: unknown): TerminalTheme | null {
+  if (isTerminalTheme(v)) return v
+  if (!v || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  const out = {} as Record<keyof TerminalTheme, string>
+  for (const key of THEME_COLOR_KEYS) {
+    let src = o[WT_KEYS[key]]
+    if (!isHexColor(src) && key === 'cursor') src = o.foreground
+    if (!isHexColor(src)) return null
+    out[key] = src
+  }
+  return isTerminalTheme(out) ? out : null
+}
+
 export function mix(a: string, b: string, t: number): string {
   const x = parseHex(a)
   const y = parseHex(b)

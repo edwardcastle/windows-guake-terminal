@@ -3,7 +3,7 @@ import {
   BUILTIN_THEMES, THEME_COLOR_KEYS, isHexColor, parseHex, toHex,
   isTerminalTheme, resolveTheme,
   mix, relativeLuminance, isLight, deriveAccent, uiPalette, contrastRatio,
-  resolveAppearance
+  resolveAppearance, adaptTheme
 } from '../src/shared/theme'
 
 describe('hex helpers', () => {
@@ -88,6 +88,38 @@ describe('palette math', () => {
       const pal = uiPalette(BUILTIN_THEMES[name], '')
       expect(contrastRatio(pal.uiMuted, pal.uiBg)).toBeGreaterThanOrEqual(3)
     }
+  })
+})
+
+describe('adaptTheme', () => {
+  test('passes through a complete quake-term theme', () => {
+    expect(adaptTheme(BUILTIN_THEMES.nord)).toEqual(BUILTIN_THEMES.nord)
+  })
+
+  test('maps a Windows Terminal scheme (purple→magenta, cursorColor→cursor)', () => {
+    const wt = {
+      name: 'Campbell',
+      background: '#0c0c0c', foreground: '#cccccc',
+      cursorColor: '#ffffff', selectionBackground: '#3a96dd',
+      black: '#0c0c0c', red: '#c50f1f', green: '#13a10e', yellow: '#c19c00',
+      blue: '#0037da', purple: '#881798', cyan: '#3a96dd', white: '#cccccc',
+      brightBlack: '#767676', brightRed: '#e74856', brightGreen: '#16c60c',
+      brightYellow: '#f9f1a5', brightBlue: '#3b78ff', brightPurple: '#b4009e',
+      brightCyan: '#61d6d6', brightWhite: '#f2f2f2'
+    }
+    const t = adaptTheme(wt)
+    expect(t).not.toBeNull()
+    expect(t?.magenta).toBe('#881798')
+    expect(t?.brightMagenta).toBe('#b4009e')
+    expect(t?.cursor).toBe('#ffffff')
+    expect(t?.cursorAccent).toBe('#0c0c0c') // falls back to background
+    expect(t?.selectionBackground).toBe('#3a96dd')
+  })
+
+  test('returns null for unrecognized objects', () => {
+    expect(adaptTheme({ foo: 'bar' })).toBeNull()
+    expect(adaptTheme(null)).toBeNull()
+    expect(adaptTheme({ ...BUILTIN_THEMES.nord, red: 'tomato' })).toBeNull()
   })
 })
 

@@ -10,6 +10,7 @@ export interface TabBarHandlers {
   openSettings(): void
   rename(index: number, name: string): void
   setColor(index: number, color: string): void
+  moveTab(from: number, to: number): void
 }
 
 function startRename(
@@ -72,6 +73,18 @@ export function renderTabBar(
     close.addEventListener('click', (e) => { e.stopPropagation(); on.close(i) })
     div.append(title, close)
     div.addEventListener('click', () => on.select(i))
+    div.draggable = true
+    div.addEventListener('dragstart', (e) => {
+      e.dataTransfer?.setData('text/plain', String(i))
+      div.classList.add('dragging')
+    })
+    div.addEventListener('dragend', () => div.classList.remove('dragging'))
+    div.addEventListener('dragover', (e) => e.preventDefault())
+    div.addEventListener('drop', (e) => {
+      e.preventDefault()
+      const from = Number(e.dataTransfer?.getData('text/plain'))
+      if (Number.isInteger(from) && from !== i) on.moveTab(from, i)
+    })
     div.addEventListener('contextmenu', (e) => {
       e.preventDefault()
       openTabMenu(e.clientX, e.clientY, swatches, {
