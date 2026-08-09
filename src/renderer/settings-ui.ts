@@ -450,7 +450,10 @@ export class SettingsUI {
       'Source Code Pro', 'Hack', 'Menlo', 'Monaco', 'Ubuntu Mono',
       'DejaVu Sans Mono', 'Roboto Mono', 'IBM Plex Mono', 'Courier New'
     ]
-    const CUSTOM = ' '
+    // Sentinel <option> value for the "Custom…" entry; a NUL can never
+    // collide with a real font family. Written as an escape so this file
+    // stays plain text -- a raw NUL byte makes grep treat it as binary.
+    const CUSTOM = '\0'
     const wrap = document.createElement('div')
     wrap.className = 'font-field'
     const select = document.createElement('select')
