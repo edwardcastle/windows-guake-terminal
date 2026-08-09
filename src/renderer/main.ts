@@ -317,13 +317,24 @@ async function boot(): Promise<void> {
   window.api.onExit((id, c) => panes.get(id)?.handleExit(c))
   if (window.api.platform === 'linux') document.documentElement.classList.add('transparent-window')
   applyAppearance(config)
+  // Dragging a settings slider fires `input` at screen rate, and each one is a
+  // round trip that lands back here. Applying every one of them re-fits the
+  // terminal dozens of times a second, which is what makes the view judder.
+  // Coalescing to one frame keeps the preview live but applies each value once.
+  let configFrame = 0
   window.api.onConfigChanged((c) => {
+    // State lands immediately so nothing reads a stale config; only the
+    // expensive half waits for the frame.
     config = c as Config
     profiles = config.profiles
-    applyAppearance(config)
-    panes.forEach((p) => p.applyConfig(config))
-    settings.syncFromConfig()
-    render()
+    if (configFrame) return
+    configFrame = requestAnimationFrame(() => {
+      configFrame = 0
+      applyAppearance(config)
+      panes.forEach((p) => p.applyConfig(config))
+      settings.syncFromConfig()
+      render()
+    })
   })
   window.api.onOpenSettings(() => settings.open())
   new ResizeObserver(() => render()).observe(panesEl)

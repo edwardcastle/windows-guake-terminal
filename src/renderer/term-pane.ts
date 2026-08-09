@@ -157,7 +157,10 @@ export class TermPane {
     o.cursorBlink = cfg.cursorBlink
     o.scrollback = cfg.scrollback
     o.theme = termTheme(cfg, app.theme)
-    this.fitNow()
+    // No fit here: render() calls renderPanes() straight after, which fits every
+    // visible pane. Fitting twice per config change resized the grid twice in a
+    // row. Panes in background tabs are display:none, so fitNow() would bail on
+    // them anyway -- they get fitted when their tab is shown.
   }
 
   setFontSize(px: number): void {
