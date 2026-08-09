@@ -51,6 +51,12 @@ export function toHex({ r, g, b }: { r: number; g: number; b: number }): string 
   return '#' + n.toString(16).padStart(6, '0')
 }
 
+// xterm compares option values by identity, so handing it a freshly built but
+// identical theme object counts as a change and resets the renderer's colors.
+export function sameTheme(a: TerminalTheme | undefined, b: TerminalTheme): boolean {
+  return a !== undefined && THEME_COLOR_KEYS.every((k) => a[k] === b[k])
+}
+
 export function isTerminalTheme(v: unknown): v is TerminalTheme {
   if (!v || typeof v !== 'object') return false
   const o = v as Record<string, unknown>

@@ -6,7 +6,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { Config, Profile } from '../shared/config'
 import type { TerminalTheme } from '../shared/theme'
-import { resolveAppearance, resolveTheme } from '../shared/theme'
+import { resolveAppearance, resolveTheme, sameTheme } from '../shared/theme'
 import { relativePath } from '../shared/path-util'
 import { openContextMenu } from './context-menu'
 
@@ -25,6 +25,7 @@ export class TermPane {
   cwd?: string
   exited = false
   onTitle?: (title: string) => void
+  private appliedTheme?: TerminalTheme
 
   constructor(
     readonly id: string,
@@ -34,6 +35,7 @@ export class TermPane {
     this.profileId = profile?.id ?? ''
     this.el.className = 'pane'
     const app = resolveAppearance(cfg, profile)
+    this.appliedTheme = termTheme(cfg, app.theme)
     this.term = new Terminal({
       allowProposedApi: true,
       // Only allow transparency when a background image is set — with the WebGL
@@ -47,7 +49,7 @@ export class TermPane {
       fontFamily: app.fontFamily,
       fontSize: app.fontSize,
       lineHeight: cfg.lineHeight,
-      theme: termTheme(cfg, app.theme)
+      theme: this.appliedTheme
     })
     this.term.loadAddon(this.fit)
     this.term.loadAddon(this.search)
@@ -156,7 +158,16 @@ export class TermPane {
     o.cursorStyle = cfg.cursorStyle
     o.cursorBlink = cfg.cursorBlink
     o.scrollback = cfg.scrollback
-    o.theme = termTheme(cfg, app.theme)
+    // Only when the colors actually differ. Assigning an equal-but-new object
+    // makes xterm reset the renderer's palette; under WebGL that clears the
+    // texture atlas, and with a background image (which forces
+    // allowTransparency) the clear shows the image through until the redraw
+    // lands. Every other option here is a primitive, which xterm guards itself.
+    const theme = termTheme(cfg, app.theme)
+    if (!sameTheme(this.appliedTheme, theme)) {
+      this.appliedTheme = theme
+      o.theme = theme
+    }
     // No fit here: render() calls renderPanes() straight after, which fits every
     // visible pane. Fitting twice per config change resized the grid twice in a
     // row. Panes in background tabs are display:none, so fitNow() would bail on

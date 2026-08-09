@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   BUILTIN_THEMES, THEME_COLOR_KEYS, isHexColor, parseHex, toHex,
-  isTerminalTheme, resolveTheme,
+  isTerminalTheme, resolveTheme, sameTheme,
   mix, relativeLuminance, isLight, deriveAccent, uiPalette, contrastRatio,
   resolveAppearance, adaptTheme
 } from '../src/shared/theme'
@@ -136,5 +136,32 @@ describe('resolveAppearance', () => {
       .toEqual({ theme: 'nord', fontFamily: 'Cascadia Mono', fontSize: 14 })
     expect(resolveAppearance(globals, { fontSize: 20 }))
       .toEqual({ theme: 'dracula', fontFamily: 'Cascadia Mono', fontSize: 20 })
+  })
+})
+
+describe('sameTheme', () => {
+  const base = BUILTIN_THEMES.dracula
+
+  test('a rebuilt but identical theme counts as unchanged', () => {
+    expect(sameTheme({ ...base }, { ...base })).toBe(true)
+  })
+
+  test('a single differing color counts as changed', () => {
+    expect(sameTheme(base, { ...base, cursor: '#123456' })).toBe(false)
+    expect(sameTheme(base, { ...base, background: '#000000' })).toBe(false)
+  })
+
+  test('every color key is compared', () => {
+    for (const k of THEME_COLOR_KEYS) {
+      expect(sameTheme(base, { ...base, [k]: '#abcdef' })).toBe(false)
+    }
+  })
+
+  test('no theme applied yet counts as changed', () => {
+    expect(sameTheme(undefined, base)).toBe(false)
+  })
+
+  test('ignores keys outside the color set', () => {
+    expect(sameTheme(base, { ...base, extra: 'x' } as never)).toBe(true)
   })
 })

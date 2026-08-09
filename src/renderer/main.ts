@@ -80,6 +80,12 @@ function applyAppearance(cfg: Config): void {
 let bgLayer: HTMLDivElement | undefined
 let bgLoadedPath = ''
 let bgDataUrl = ''
+// What is currently on the layer. Every config change reaches applyBackground,
+// and rewriting background-image re-hands Chromium a data URL that can run to
+// megabytes, then re-applies a blur over a layer larger than the window. That
+// invalidated the backdrop on changes that had nothing to do with it -- which
+// is what made the image flicker while a font slider was moving.
+let bgPainted = ''
 
 function applyBackground(cfg: Config): void {
   if (!bgLayer) {
@@ -89,23 +95,29 @@ function applyBackground(cfg: Config): void {
   }
   const layer = bgLayer
   if (!cfg.backgroundImage) {
-    layer.style.display = 'none'
+    if (bgPainted !== 'none') {
+      layer.style.display = 'none'
+      bgPainted = 'none'
+    }
     bgLoadedPath = ''
     bgDataUrl = ''
     return
   }
+  const want = `${cfg.backgroundImage}|${cfg.backgroundDim}|${cfg.backgroundBlur}`
+  if (want === bgPainted) return
   const paint = (dataUrl: string): void => {
     layer.style.display = ''
     layer.style.backgroundImage =
       `linear-gradient(rgba(0,0,0,${cfg.backgroundDim}), rgba(0,0,0,${cfg.backgroundDim})), url("${dataUrl}")`
     layer.style.filter = `blur(${cfg.backgroundBlur}px)`
+    bgPainted = want
   }
   if (cfg.backgroundImage === bgLoadedPath && bgDataUrl) {
-    paint(bgDataUrl) // image cached; dim/blur may have changed
+    paint(bgDataUrl) // image cached; dim/blur changed
     return
   }
   void window.api.loadImage(cfg.backgroundImage).then((url) => {
-    if (!url) { layer.style.display = 'none'; return }
+    if (!url) { layer.style.display = 'none'; bgPainted = 'none'; return }
     bgLoadedPath = cfg.backgroundImage
     bgDataUrl = url
     paint(url)
