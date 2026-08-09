@@ -90,7 +90,12 @@ html.transparent-window #app { opacity: var(--win-opacity); }
 #profile-menu div:hover { background: var(--ui-accent); color: var(--ui-bg); }
 
 /* ---- panes ---- */
-#panes { position: relative; flex: 1; }
+/* Clips #bg-layer's bleed. Without it the layer reaches 24px (plus the blur
+   radius) above #panes and paints over the tab bar -- #tabbar is a static flex
+   item, so a positioned z-index:0 sibling wins -- hiding the tab titles behind
+   the background image. The bleed still does its job: its blurred edges fall
+   outside the clip instead of showing as faded borders. */
+#panes { position: relative; flex: 1; overflow: hidden; }
 #bg-layer {
   position: absolute;
   inset: -24px; /* bleed so blur doesn't reveal the edges */
