@@ -7,21 +7,39 @@ import {
 } from '../shared/theme'
 import { availableFonts, isFontAvailable } from '../shared/font-probe'
 
-// Canvas-backed text measurement for the font probe. Memoized because the picker
-// is rebuilt on every settings change and queryLocalFonts() can return hundreds
-// of families, each costing several measurements. Widths only change if the
-// installed fonts do, so caching for the session is safe.
-const fontCanvas = document.createElement('canvas').getContext('2d')
-const FONT_SAMPLE = 'mmmmmmmmmmlliWWWW@01'
-const fontWidths = new Map<string, number>()
-function measureFont(cssFontStack: string): number {
-  const hit = fontWidths.get(cssFontStack)
+// Canvas-backed rendering fingerprint for the font probe. Memoized because the
+// picker is rebuilt on every settings change and queryLocalFonts() can return
+// hundreds of families. What a font draws only changes if the installed fonts
+// do, so caching for the session is safe.
+const FONT_SAMPLE = 'Illegal1 0O gq {}[]()<> => != @#$&'
+const FP_W = 512
+const FP_H = 44
+const fontCanvas = (() => {
+  const c = document.createElement('canvas')
+  c.width = FP_W
+  c.height = FP_H
+  return c.getContext('2d', { willReadFrequently: true })
+})()
+const fontPrints = new Map<string, string>()
+function fingerprintFont(cssFontStack: string): string {
+  const hit = fontPrints.get(cssFontStack)
   if (hit !== undefined) return hit
-  if (!fontCanvas) return 0
-  fontCanvas.font = `72px ${cssFontStack}`
-  const w = fontCanvas.measureText(FONT_SAMPLE).width
-  fontWidths.set(cssFontStack, w)
-  return w
+  if (!fontCanvas) return ''
+  fontCanvas.clearRect(0, 0, FP_W, FP_H)
+  fontCanvas.textBaseline = 'top'
+  fontCanvas.fillStyle = '#000'
+  fontCanvas.font = `32px ${cssFontStack}`
+  fontCanvas.fillText(FONT_SAMPLE, 0, 4)
+  // FNV-1a over the alpha channel: coverage alone identifies the glyph shapes.
+  const data = fontCanvas.getImageData(0, 0, FP_W, FP_H).data
+  let h = 2166136261
+  for (let i = 3; i < data.length; i += 4) {
+    h ^= data[i]
+    h = Math.imul(h, 16777619)
+  }
+  const print = (h >>> 0).toString(16)
+  fontPrints.set(cssFontStack, print)
+  return print
 }
 
 type Patch = (patch: Partial<Config>) => void
@@ -489,12 +507,16 @@ export class SettingsUI {
       specimen.style.fontWeight = String(cfg.fontWeight)
     }
 
-    const populate = (all: string[]): void => {
+    // `verify` is only needed for the curated list. queryLocalFonts() enumerates
+    // what the OS has, so probing those families would be hundreds of canvas
+    // renders to confirm what we already know.
+    const populate = (all: string[], verify: boolean): void => {
       const current = cfg.fontFamily
       // Offering a font that is not installed is a dead end: picking it changes
-      // nothing on screen, because the browser silently falls back. The curated
-      // list in particular carries macOS-only names like Menlo and Monaco.
-      const families = availableFonts(measureFont, all)
+      // nothing on screen, because the browser silently falls back, so every
+      // missing family looks identical. The curated list in particular carries
+      // macOS-only names like Menlo and Monaco.
+      const families = verify ? availableFonts(fingerprintFont, all) : all
       select.textContent = ''
       // Show the current value (e.g. a custom stack) as a selected option so the
       // custom text box stays hidden until the user picks "Custom…".
@@ -502,7 +524,7 @@ export class SettingsUI {
         const o = document.createElement('option')
         o.value = current
         // Say so rather than leaving the user to wonder why nothing changed.
-        o.textContent = isFontAvailable(measureFont, current)
+        o.textContent = isFontAvailable(fingerprintFont, current)
           ? current
           : `${current} — not installed`
         o.selected = true
@@ -522,7 +544,8 @@ export class SettingsUI {
       custom.classList.add('hidden')
     }
 
-    populate(this.localFonts && this.localFonts.length ? this.localFonts : curated)
+    const haveLocal = !!(this.localFonts && this.localFonts.length)
+    populate(haveLocal ? (this.localFonts as string[]) : curated, !haveLocal)
     paint(cfg.fontFamily)
 
     select.addEventListener('change', () => {
@@ -544,7 +567,7 @@ export class SettingsUI {
     if (this.localFonts === null && q) {
       q().then((fonts) => {
         this.localFonts = [...new Set(fonts.map((f) => f.family))].sort()
-        if (this.localFonts.length) populate(this.localFonts)
+        if (this.localFonts.length) populate(this.localFonts, false)
       }).catch(() => { this.localFonts = [] })
     }
 
