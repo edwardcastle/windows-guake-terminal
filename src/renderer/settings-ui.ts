@@ -5,6 +5,24 @@ import {
   BUILTIN_THEMES, THEME_COLOR_KEYS,
   isHexColor, parseHex, toHex, resolveTheme, adaptTheme
 } from '../shared/theme'
+import { availableFonts, isFontAvailable } from '../shared/font-probe'
+
+// Canvas-backed text measurement for the font probe. Memoized because the picker
+// is rebuilt on every settings change and queryLocalFonts() can return hundreds
+// of families, each costing several measurements. Widths only change if the
+// installed fonts do, so caching for the session is safe.
+const fontCanvas = document.createElement('canvas').getContext('2d')
+const FONT_SAMPLE = 'mmmmmmmmmmlliWWWW@01'
+const fontWidths = new Map<string, number>()
+function measureFont(cssFontStack: string): number {
+  const hit = fontWidths.get(cssFontStack)
+  if (hit !== undefined) return hit
+  if (!fontCanvas) return 0
+  fontCanvas.font = `72px ${cssFontStack}`
+  const w = fontCanvas.measureText(FONT_SAMPLE).width
+  fontWidths.set(cssFontStack, w)
+  return w
+}
 
 type Patch = (patch: Partial<Config>) => void
 type Category = 'Appearance' | 'Terminal' | 'Window' | 'Profiles' | 'Keybindings'
@@ -471,15 +489,22 @@ export class SettingsUI {
       specimen.style.fontWeight = String(cfg.fontWeight)
     }
 
-    const populate = (families: string[]): void => {
+    const populate = (all: string[]): void => {
       const current = cfg.fontFamily
+      // Offering a font that is not installed is a dead end: picking it changes
+      // nothing on screen, because the browser silently falls back. The curated
+      // list in particular carries macOS-only names like Menlo and Monaco.
+      const families = availableFonts(measureFont, all)
       select.textContent = ''
       // Show the current value (e.g. a custom stack) as a selected option so the
       // custom text box stays hidden until the user picks "Custom…".
       if (current && !families.includes(current)) {
         const o = document.createElement('option')
         o.value = current
-        o.textContent = current
+        // Say so rather than leaving the user to wonder why nothing changed.
+        o.textContent = isFontAvailable(measureFont, current)
+          ? current
+          : `${current} — not installed`
         o.selected = true
         select.appendChild(o)
       }
