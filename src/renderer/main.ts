@@ -5,7 +5,7 @@ import { PaneNode, leaf, leaves, splitPane, closePane, setRatio, neighbor } from
 import { matchAction } from '../shared/keys'
 import { renderPanes } from './pane-view'
 import { TermPane } from './term-pane'
-import { renderTabBar } from './tab-bar'
+import { renderTabBar, isRenaming } from './tab-bar'
 import { FindBar } from './find-bar'
 import { SettingsUI } from './settings-ui'
 import { CommandPalette } from './command-palette'
@@ -230,7 +230,9 @@ export function render(): void {
       },
       focusPane
     )
-    if (!findBar.isOpen() && !settings.isOpen() && !palette.isOpen()) panes.get(tab.activePane)?.term.focus()
+    if (!findBar.isOpen() && !settings.isOpen() && !palette.isOpen() && !isRenaming()) {
+      panes.get(tab.activePane)?.term.focus()
+    }
   }
   saveSession()
 }

@@ -13,21 +13,41 @@ export interface TabBarHandlers {
   moveTab(from: number, to: number): void
 }
 
-function startRename(
+// An in-progress rename has to outlive a re-render: render() runs for reasons
+// that have nothing to do with the tab bar (the shell emitting an OSC title,
+// selecting a tab, resizing a split), and it rebuilds every tab from scratch.
+// Keeping the edit in module state lets renderTabBar restore it afterwards.
+interface RenameState { index: number; value: string; selStart: number; selEnd: number }
+let renaming: RenameState | null = null
+// True only while renderTabBar tears the old tabs down. Removing a focused
+// input fires blur, which would otherwise commit and re-enter render().
+let tearingDown = false
+
+export function isRenaming(): boolean {
+  return renaming !== null
+}
+
+function openRename(
   titleEl: HTMLElement,
   index: number,
-  apply: (i: number, name: string) => void
+  apply: (i: number, name: string) => void,
+  original: string,
+  value: string,
+  selStart: number,
+  selEnd: number
 ): void {
-  const original = titleEl.textContent ?? ''
   const input = document.createElement('input')
   input.type = 'text'
   input.className = 'tab-rename'
-  input.value = original
+  input.value = value
   let done = false
   const finish = (commit: boolean): void => {
     if (done) return
     done = true
-    if (commit) apply(index, input.value)
+    const text = input.value
+    // Clear first: apply() re-renders, and that pass must not restore the input.
+    renaming = null
+    if (commit) apply(index, text)
     else titleEl.textContent = original
   }
   input.addEventListener('keydown', (e) => {
@@ -35,11 +55,21 @@ function startRename(
     if (e.key === 'Enter') { e.preventDefault(); finish(true) }
     else if (e.key === 'Escape') { e.preventDefault(); finish(false) }
   })
-  input.addEventListener('blur', () => finish(true))
+  input.addEventListener('blur', () => { if (!tearingDown) finish(true) })
   titleEl.textContent = ''
   titleEl.appendChild(input)
   input.focus()
-  input.select()
+  input.setSelectionRange(selStart, selEnd)
+}
+
+function beginRename(
+  titleEl: HTMLElement,
+  index: number,
+  apply: (i: number, name: string) => void,
+  original: string
+): void {
+  renaming = { index, value: original, selStart: 0, selEnd: original.length }
+  openRename(titleEl, index, apply, original, original, 0, original.length)
 }
 
 export function renderTabBar(
@@ -50,7 +80,18 @@ export function renderTabBar(
   swatches: string[],
   on: TabBarHandlers
 ): void {
+  // Snapshot a live edit before the teardown discards it, so the caret and the
+  // half-typed name survive re-renders the user did not ask for.
+  const live = el.querySelector<HTMLInputElement>('input.tab-rename')
+  if (live && renaming) {
+    renaming.value = live.value
+    renaming.selStart = live.selectionStart ?? live.value.length
+    renaming.selEnd = live.selectionEnd ?? live.value.length
+  }
+  if (renaming && renaming.index >= tabs.length) renaming = null
+  tearingDown = true
   el.textContent = ''
+  tearingDown = false
   tabs.forEach((tab, i) => {
     const div = document.createElement('div')
     div.className = 'tab' + (i === activeIdx ? ' active' : '')
@@ -63,9 +104,13 @@ export function renderTabBar(
     const title = document.createElement('span')
     title.className = 'title'
     title.textContent = tab.title
-    title.addEventListener('dblclick', (e) => {
+    // detail === 2 is the second click of a double-click. A dblclick listener
+    // would be unreliable here: the first click selects the tab, which
+    // re-renders and replaces this very node before the second click lands.
+    title.addEventListener('click', (e) => {
+      if (e.detail !== 2) return
       e.stopPropagation()
-      startRename(title, i, on.rename)
+      beginRename(title, i, on.rename, tab.title)
     })
     const close = document.createElement('span')
     close.className = 'close'
@@ -88,11 +133,15 @@ export function renderTabBar(
     div.addEventListener('contextmenu', (e) => {
       e.preventDefault()
       openTabMenu(e.clientX, e.clientY, swatches, {
-        startRename: () => startRename(title, i, on.rename),
+        startRename: () => beginRename(title, i, on.rename, tab.title),
         setColor: (c) => on.setColor(i, c)
       })
     })
     el.appendChild(div)
+    // Reopen after the node is connected — focus() is a no-op while detached.
+    if (renaming && renaming.index === i) {
+      openRename(title, i, on.rename, tab.title, renaming.value, renaming.selStart, renaming.selEnd)
+    }
   })
 
   const plus = document.createElement('div')
