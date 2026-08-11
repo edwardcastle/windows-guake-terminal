@@ -83,9 +83,9 @@ function makeButton(text: string, onClick: () => void): HTMLButtonElement {
   return b
 }
 
-// Ko-fi tip jar (0% fee on one-time tips). If a different handle is
-// registered at ko-fi.com, update this single constant.
-const DONATE_URL = 'https://ko-fi.com/edwardcastle'
+// Ko-fi tip jar (0% fee on one-time tips). The handle also appears in
+// .github/FUNDING.yml for the repo's Sponsor button; change both together.
+const DONATE_URL = 'https://ko-fi.com/eduardocastillodev'
 
 function makeCredit(): HTMLParagraphElement {
   const c = document.createElement('p')
