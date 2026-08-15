@@ -1,9 +1,13 @@
 name: Release
 
-# Build the Windows installer and publish it to a single GitHub Release when a
-# version tag like v0.1.4 is pushed. electron-builder only *builds* here
-# (--publish never); a dedicated action uploads every artifact to one release,
-# avoiding electron-builder's duplicate-release race with the GitHub provider.
+# Build the Windows installer and the Linux AppImage, and publish both to a
+# single GitHub Release when a version tag like v0.1.4 is pushed.
+# electron-builder only *builds* here (--publish never); a dedicated action
+# uploads every artifact to one release, avoiding electron-builder's
+# duplicate-release race with the GitHub provider.
+#
+# Each platform builds on its own runner: node-pty is a native module, so it
+# cannot be cross-compiled from one to the other.
 on:
   push:
     tags: ['v*.*.*']
@@ -18,7 +22,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22.12+ is required, not a preference: app-builder-lib's blockmap
+          # step require()s @noble/hashes, which is ESM-only, and only Node
+          # >= 22.12 can require() an ES module. On 20 the build dies with
+          # ERR_REQUIRE_ESM after packaging.
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build
@@ -32,3 +40,29 @@ jobs:
             dist/*.exe
             dist/latest.yml
             dist/*.blockmap
+
+  build-linux:
+    # Sequenced rather than parallel: both jobs upload to the same tag, and
+    # letting them create the release concurrently reintroduces exactly the
+    # duplicate-release race this workflow exists to avoid.
+    needs: build-windows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Build the AppImage
+        run: npx electron-builder --linux --publish never
+      - name: Add to the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          # AppImage carries its block map inside the file, so there is no
+          # separate .blockmap to upload; latest-linux.yml is the update feed.
+          files: |
+            dist/*.AppImage
+            dist/latest-linux.yml

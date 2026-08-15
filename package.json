@@ -1,6 +1,9 @@
 {
   "name": "quake-term",
   "version": "0.1.7",
+  "description": "Quake-style drop-down terminal that toggles with a global hotkey",
+  "author": "Eduardo Gonzalez Castillo",
+  "desktopName": "quake-term.desktop",
   "private": true,
   "main": "out/main/index.js",
   "scripts": {
@@ -8,6 +11,7 @@
     "build": "electron-vite build",
     "test": "vitest run",
     "dist": "electron-vite build && electron-builder --win",
+    "dist:linux": "electron-vite build && electron-builder --linux",
     "release": "electron-vite build && electron-builder --win --publish always",
     "postinstall": "electron-rebuild -f -w node-pty"
   },
@@ -52,6 +56,20 @@
       "target": [
         "nsis"
       ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility;TerminalEmulator;",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "synopsis": "Drop-down terminal",
+      "syncDesktopName": true,
+      "desktop": {
+        "entry": {
+          "Keywords": "terminal;shell;console;quake;dropdown;"
+        }
+      }
     },
     "nsis": {
       "oneClick": true,
