@@ -5,7 +5,6 @@ import type { Config } from '../shared/config'
 export class WindowManager {
   readonly win: BrowserWindow
   modalOpen = false
-  private animating = false
 
   constructor(private getConfig: () => Config) {
     // setOpacity() is a no-op on Linux, so opacity there is driven by a
@@ -55,10 +54,13 @@ export class WindowManager {
       : screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
   }
 
-  // Off-screen parked Y for the slide animation: above the work area for a
-  // top-edge dropdown, below it for a bottom-edge one.
-  private offscreenY(b: { y: number; height: number }): number {
-    return this.getConfig().dropdownEdge === 'bottom' ? b.y + b.height : b.y - b.height
+  // Window managers mark a frameless window shown at exactly the work area as
+  // maximized, and a maximized window silently ignores every later resize
+  // request -- which is why the Width and Height settings did nothing at the
+  // default 100%. Dropping out of that state first makes the resize stick.
+  private applyBounds(b: { x: number; y: number; width: number; height: number }): void {
+    if (this.win.isMaximized()) this.win.unmaximize()
+    this.win.setBounds(b)
   }
 
   toggle(): void {
@@ -68,53 +70,17 @@ export class WindowManager {
   }
 
   show(): void {
-    if (this.animating) return
     if (this.win.isVisible()) {
       this.win.focus()
       return
     }
-    const b = this.targetBounds(this.showDisplay())
-    const ms = this.getConfig().animationMs
-    if (ms === 0) {
-      this.win.setBounds(b)
-      this.win.show()
-      return
-    }
-    const start = this.offscreenY(b)
-    this.win.setBounds({ ...b, y: start })
+    this.applyBounds(this.targetBounds(this.showDisplay()))
     this.win.show()
-    this.animate(start, b.y, ms, (y) => this.win.setBounds({ ...b, y }))
   }
 
   hide(): void {
-    if (this.animating || !this.win.isVisible()) return
-    const b = this.win.getBounds()
-    const ms = this.getConfig().animationMs
-    if (ms === 0) {
-      this.win.hide()
-      return
-    }
-    this.animate(b.y, this.offscreenY(b), ms, (y) => this.win.setBounds({ ...b, y }), () =>
-      this.win.hide()
-    )
-  }
-
-  private animate(
-    from: number, to: number, ms: number,
-    step: (y: number) => void, done?: () => void
-  ): void {
-    this.animating = true
-    const start = Date.now()
-    const timer = setInterval(() => {
-      const t = Math.min(1, (Date.now() - start) / ms)
-      const eased = 1 - (1 - t) * (1 - t) // ease-out
-      step(Math.round(from + (to - from) * eased))
-      if (t >= 1) {
-        clearInterval(timer)
-        this.animating = false
-        done?.()
-      }
-    }, 16)
+    if (!this.win.isVisible()) return
+    this.win.hide()
   }
 
   applyAppearance(): void {
@@ -132,8 +98,8 @@ export class WindowManager {
     }
     // Live appearance changes keep the window on its current display; only an
     // explicit show() re-targets the display under the cursor.
-    if (this.win.isVisible() && !this.animating) {
-      this.win.setBounds(this.targetBounds(screen.getDisplayMatching(this.win.getBounds())))
+    if (this.win.isVisible()) {
+      this.applyBounds(this.targetBounds(screen.getDisplayMatching(this.win.getBounds())))
     }
   }
 }

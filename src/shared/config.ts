@@ -50,7 +50,6 @@ export interface Config {
   scrollback: number
   widthPct: number
   heightPct: number
-  animationMs: number
   hideOnBlur: boolean
   startWithWindows: boolean
   restoreSession: boolean
@@ -104,7 +103,6 @@ export const DEFAULT_CONFIG: Config = {
   scrollback: 10000,
   widthPct: 100,
   heightPct: 100,
-  animationMs: 150,
   hideOnBlur: true,
   startWithWindows: true,
   restoreSession: true,
@@ -196,7 +194,6 @@ export function mergeConfig(raw: unknown): Config {
     scrollback: num(r.scrollback, d.scrollback, 100, 200000),
     widthPct: num(r.widthPct, d.widthPct, 20, 100),
     heightPct: num(r.heightPct, d.heightPct, 20, 100),
-    animationMs: num(r.animationMs, d.animationMs, 0, 1000),
     hideOnBlur: bool(r.hideOnBlur, d.hideOnBlur),
     startWithWindows: bool(r.startWithWindows, d.startWithWindows),
     restoreSession: bool(r.restoreSession, d.restoreSession),
