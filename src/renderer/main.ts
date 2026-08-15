@@ -87,6 +87,19 @@ let bgDataUrl = ''
 // is what made the image flicker while a font slider was moving.
 let bgPainted = ''
 
+// Holding Ctrl makes the whole surface a window-drag handle (see styles.css).
+// The class is cleared defensively as well as on keyup: if the window is hidden
+// or focus moves while Ctrl is down, the keyup never arrives and the app would
+// be left unclickable.
+function wireDragAnywhere(): void {
+  const root = document.documentElement
+  const set = (on: boolean): void => { root.classList.toggle('drag-anywhere', on) }
+  window.addEventListener('keydown', (e) => { if (e.ctrlKey) set(true) })
+  window.addEventListener('keyup', (e) => { if (!e.ctrlKey) set(false) })
+  window.addEventListener('blur', () => set(false))
+  document.addEventListener('visibilitychange', () => { if (document.hidden) set(false) })
+}
+
 function applyBackground(cfg: Config): void {
   if (!bgLayer) {
     bgLayer = document.createElement('div')
@@ -328,6 +341,7 @@ async function boot(): Promise<void> {
   window.api.onData((id, d) => panes.get(id)?.term.write(d))
   window.api.onExit((id, c) => panes.get(id)?.handleExit(c))
   if (window.api.platform === 'linux') document.documentElement.classList.add('transparent-window')
+  wireDragAnywhere()
   applyAppearance(config)
   // Dragging a settings slider fires `input` at screen rate, and each one is a
   // round trip that lands back here. Applying every one of them re-fits the

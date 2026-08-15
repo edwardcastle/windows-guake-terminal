@@ -30,6 +30,30 @@ html.transparent-window,
 html.transparent-window body { background: transparent; }
 html.transparent-window #app { opacity: var(--win-opacity); }
 
+/* ---- window dragging ----
+   The window is frameless, so there is no title bar to grab. The tab bar is the
+   handle; its empty stretch (the settings button is pushed right by margin-left:
+   auto) is the natural place to grab.
+
+   Anything inside a drag region stops receiving mouse events, so every control
+   in the bar has to opt back out below, or the tabs and buttons go dead.
+
+   Holding Ctrl promotes the whole surface to a handle, for dragging from any
+   point. It has to be a modifier: the terminal fills the window, and a plain
+   drag there is text selection. Alt is unavailable -- xterm uses it for column
+   selection -- and Super belongs to the window manager. */
+#tabbar { -webkit-app-region: drag; }
+.tab,
+.tab-btn,
+.tab-rename { -webkit-app-region: no-drag; }
+html.drag-anywhere #app { -webkit-app-region: drag; }
+html.drag-anywhere .tab,
+html.drag-anywhere .tab-btn,
+html.drag-anywhere .tab-rename { -webkit-app-region: drag; }
+/* Modals stay clickable while Ctrl is held, or holding it with settings open
+   would freeze the dialog. */
+html.drag-anywhere .overlay { -webkit-app-region: no-drag; }
+
 /* ---- tab bar ---- */
 #tabbar {
   display: flex;
