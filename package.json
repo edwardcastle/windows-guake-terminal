@@ -1,6 +1,6 @@
 {
   "name": "quake-term",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Quake-style drop-down terminal that toggles with a global hotkey",
   "author": "Eduardo Gonzalez Castillo",
   "desktopName": "quake-term.desktop",
